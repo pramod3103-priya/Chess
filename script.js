@@ -1025,9 +1025,16 @@
     }
 
     function undoMove() {
-        if (gameState.isThinking || undoStack.length === 0) return;
+        if (undoStack.length === 0) return;
 
-        // In PvE mode, undo two plies (both AI move and user move) so player retains turn
+        // Cancel any pending AI computation
+        if (aiTimeoutId) {
+            clearTimeout(aiTimeoutId);
+            aiTimeoutId = null;
+        }
+        gameState.isThinking = false;
+
+        // In PvE mode, if AI has moved and it's user's turn, undo two plies so player retains turn
         if (gameState.gameMode === 'pve' && gameState.turn !== gameState.aiColor && undoStack.length >= 2) {
             redoStack.push(createGameStateSnapshot());
             const previousAiSnapshot = undoStack.pop();
@@ -1072,6 +1079,11 @@
     }
 
     function restartGame() {
+        if (aiTimeoutId) {
+            clearTimeout(aiTimeoutId);
+            aiTimeoutId = null;
+        }
+        gameState.isThinking = false;
         undoStack = [];
         redoStack = [];
         gameState.board = createInitialBoardArray();
@@ -1305,14 +1317,24 @@
         return bestMove || legalMoves[0];
     }
 
+    let aiTimeoutId = null;
+
     function triggerAiMove() {
-        if (gameState.isGameOver || gameState.isThinking) return;
+        if (gameState.isGameOver) return;
+        if (aiTimeoutId) clearTimeout(aiTimeoutId);
 
         gameState.isThinking = true;
         updateGameStatus();
 
         // Realistic thinking delay
-        setTimeout(() => {
+        aiTimeoutId = setTimeout(() => {
+            aiTimeoutId = null;
+            if (gameState.isGameOver || gameState.turn !== gameState.aiColor) {
+                gameState.isThinking = false;
+                updateGameStatus();
+                return;
+            }
+
             const best = findBestMove(gameState.turn);
             gameState.isThinking = false;
 
@@ -1451,7 +1473,8 @@
                 });
 
                 // Click listener
-                square.addEventListener('click', () => {
+                square.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     handleSquareClick(r, c);
                 });
 
