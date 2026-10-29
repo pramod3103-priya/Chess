@@ -18,15 +18,6 @@ const PORT = process.env.PORT || 3000;
 const DEFAULT_TIME = 600; // 10 minutes per player in seconds
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 6-character alphanumeric (no ambiguous 0/O, 1/I)
 
-// CORS middleware for express
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-    if (req.method === 'OPTIONS') return res.sendStatus(200);
-    next();
-});
-
 // Serve frontend static files
 app.use(express.static(path.join(__dirname)));
 
@@ -109,19 +100,12 @@ function sanitizeRoomData(room, playerColor) {
     };
 }
 
-function getPlayerColor(room, socketId) {
-    if (!room || !room.players) return null;
-    if (room.players.white && room.players.white.socketId === socketId) return 'white';
-    if (room.players.black && room.players.black.socketId === socketId) return 'black';
-    return null;
-}
-
 io.on('connection', (socket) => {
     let currentRoomCode = null;
-    console.log(`[Socket.IO] Client connected: ${socket.id} from ${socket.handshake.address}`);
+    let playerColor = null;
 
     // 1. Create Room (Player 1 / White)
-    function handleCreateRoom(data, callback) {
+    socket.on('create_room', (data, callback) => {
         try {
             const code = generateRoomCode();
             const sessionToken = crypto.randomBytes(16).toString('hex');
@@ -153,31 +137,26 @@ io.on('connection', (socket) => {
             rooms.set(code, room);
             socket.join(code);
             currentRoomCode = code;
-
-            console.log(`[Server] Created room "${code}" for player "${playerName}" (${socket.id}) as White`);
+            playerColor = 'white';
 
             if (typeof callback === 'function') {
                 callback({
                     success: true,
                     roomCode: code,
-                    code: code,
                     color: 'white',
                     sessionToken
                 });
             }
         } catch (err) {
-            console.error('[Server] Error creating room:', err);
+            console.error('Error creating room:', err);
             if (typeof callback === 'function') {
                 callback({ success: false, error: 'Server error while creating room.' });
             }
         }
-    }
-
-    socket.on('create_room', handleCreateRoom);
-    socket.on('createRoom', handleCreateRoom);
+    });
 
     // 2. Join Room (Player 2 / Black)
-    function handleJoinRoom(data, callback) {
+    socket.on('join_room', (data, callback) => {
         try {
             if (!data || !data.roomCode) {
                 if (typeof callback === 'function') {
@@ -190,7 +169,6 @@ io.on('connection', (socket) => {
             const room = rooms.get(code);
 
             if (!room) {
-                console.warn(`[Server] Join attempt failed: Room "${code}" not found.`);
                 if (typeof callback === 'function') {
                     return callback({ success: false, error: 'Room not found. Check code and try again.' });
                 }
@@ -204,19 +182,18 @@ io.on('connection', (socket) => {
                     room.players.white.connected = true;
                     socket.join(code);
                     currentRoomCode = code;
+                    playerColor = 'white';
 
                     if (room.abandonTimeout) {
                         clearTimeout(room.abandonTimeout);
                         room.abandonTimeout = null;
                     }
 
-                    console.log(`[Server] Player 1 reconnected to room "${code}"`);
                     socket.to(code).emit('player_reconnected', { color: 'white' });
                     if (typeof callback === 'function') {
                         callback({
                             success: true,
                             roomCode: code,
-                            code: code,
                             color: 'white',
                             gameState: sanitizeRoomData(room, 'white')
                         });
@@ -227,19 +204,18 @@ io.on('connection', (socket) => {
                     room.players.black.connected = true;
                     socket.join(code);
                     currentRoomCode = code;
+                    playerColor = 'black';
 
                     if (room.abandonTimeout) {
                         clearTimeout(room.abandonTimeout);
                         room.abandonTimeout = null;
                     }
 
-                    console.log(`[Server] Player 2 reconnected to room "${code}"`);
                     socket.to(code).emit('player_reconnected', { color: 'black' });
                     if (typeof callback === 'function') {
                         callback({
                             success: true,
                             roomCode: code,
-                            code: code,
                             color: 'black',
                             gameState: sanitizeRoomData(room, 'black')
                         });
@@ -250,7 +226,6 @@ io.on('connection', (socket) => {
 
             // Room slot availability check
             if (room.players.black) {
-                console.warn(`[Server] Room "${code}" is already full.`);
                 if (typeof callback === 'function') {
                     return callback({ success: false, error: 'Room is already full (2 players are in game).' });
                 }
@@ -271,6 +246,7 @@ io.on('connection', (socket) => {
 
             socket.join(code);
             currentRoomCode = code;
+            playerColor = 'black';
 
             // Clear abandon timeout if set
             if (room.abandonTimeout) {
@@ -280,14 +256,12 @@ io.on('connection', (socket) => {
 
             // Start clock
             startClock(room);
-            console.log(`[Server] Player 2 joined room "${code}". Game started!`);
 
             // Notify joiner
             if (typeof callback === 'function') {
                 callback({
                     success: true,
                     roomCode: code,
-                    code: code,
                     color: 'black',
                     sessionToken,
                     gameState: sanitizeRoomData(room, 'black')
@@ -297,7 +271,6 @@ io.on('connection', (socket) => {
             // Notify both players game has started
             io.to(code).emit('game_start', {
                 roomCode: code,
-                code: code,
                 fen: room.chess.fen(),
                 turn: room.chess.turn(),
                 clocks: room.clocks,
@@ -305,18 +278,15 @@ io.on('connection', (socket) => {
                 blackName: room.players.black.name
             });
         } catch (err) {
-            console.error('[Server] Error joining room:', err);
+            console.error('Error joining room:', err);
             if (typeof callback === 'function') {
                 callback({ success: false, error: 'Server error while joining room.' });
             }
         }
-    }
-
-    socket.on('join_room', handleJoinRoom);
-    socket.on('joinRoom', handleJoinRoom);
+    });
 
     // 3. Make Move (Authoritative Chess.js Server Validation)
-    function handleMakeMove(data, callback) {
+    socket.on('make_move', (data, callback) => {
         try {
             if (!currentRoomCode || !rooms.has(currentRoomCode)) {
                 if (typeof callback === 'function') callback({ success: false, error: 'Invalid room.' });
@@ -327,12 +297,6 @@ io.on('connection', (socket) => {
 
             if (room.status !== 'playing') {
                 if (typeof callback === 'function') callback({ success: false, error: 'Game is not active.' });
-                return;
-            }
-
-            const playerColor = getPlayerColor(room, socket.id);
-            if (!playerColor) {
-                if (typeof callback === 'function') callback({ success: false, error: 'Spectator move rejected.' });
                 return;
             }
 
@@ -405,33 +369,25 @@ io.on('connection', (socket) => {
                 callback({ success: true, move: moveResult });
             }
         } catch (err) {
-            console.error('[Server] Error executing move:', err);
+            console.error('Error executing move:', err);
             if (typeof callback === 'function') {
                 callback({ success: false, error: 'Server error processing move.' });
             }
         }
-    }
-
-    socket.on('make_move', handleMakeMove);
-    socket.on('makeMove', handleMakeMove);
+    });
 
     // 4. Player Resigns
-    function handleResign(data, callback) {
+    socket.on('resign_game', (data, callback) => {
         if (!currentRoomCode || !rooms.has(currentRoomCode)) return;
         const room = rooms.get(currentRoomCode);
 
         if (room.status !== 'playing') return;
-
-        const playerColor = getPlayerColor(room, socket.id);
-        if (!playerColor) return;
 
         const winner = playerColor === 'white' ? 'black' : 'white';
         room.status = 'gameover';
         room.winner = winner;
         room.endReason = `${playerColor === 'white' ? 'White' : 'Black'} resigned.`;
         stopClock(room);
-
-        console.log(`[Server] ${playerColor} resigned in room "${currentRoomCode}"`);
 
         io.to(currentRoomCode).emit('game_over', {
             winner,
@@ -440,20 +396,14 @@ io.on('connection', (socket) => {
         });
 
         if (typeof callback === 'function') callback({ success: true });
-    }
-
-    socket.on('resign_game', handleResign);
-    socket.on('resign', handleResign);
+    });
 
     // 5. Rematch Request & Agreement
-    function handleRematch(data, callback) {
+    socket.on('request_rematch', (data, callback) => {
         if (!currentRoomCode || !rooms.has(currentRoomCode)) return;
         const room = rooms.get(currentRoomCode);
 
         if (room.status !== 'gameover') return;
-
-        const playerColor = getPlayerColor(room, socket.id);
-        if (!playerColor) return;
 
         room.rematchRequested[playerColor] = true;
         const otherColor = playerColor === 'white' ? 'black' : 'white';
@@ -471,7 +421,6 @@ io.on('connection', (socket) => {
             room.players.black = temp;
 
             startClock(room);
-            console.log(`[Server] Rematch started for room "${currentRoomCode}" with swapped roles!`);
 
             // Notify both players of new match with swapped colors
             if (room.players.white && room.players.white.socketId) {
@@ -492,30 +441,22 @@ io.on('connection', (socket) => {
                     blackName: room.players.black.name
                 });
             }
-
-            if (typeof callback === 'function') callback({ success: true, started: true });
         } else {
             // Notify opponent that rematch was offered
-            console.log(`[Server] ${playerColor} offered rematch in room "${currentRoomCode}"`);
             socket.to(currentRoomCode).emit('rematch_offered', {
                 offeredBy: playerColor
             });
             if (typeof callback === 'function') callback({ success: true, waiting: true });
         }
-    }
-
-    socket.on('request_rematch', handleRematch);
-    socket.on('requestRematch', handleRematch);
+    });
 
     // 6. Leave Room
-    function handleLeaveRoom(data, callback) {
+    socket.on('leave_room', (data, callback) => {
         if (!currentRoomCode || !rooms.has(currentRoomCode)) {
             if (typeof callback === 'function') callback({ success: true });
             return;
         }
         const room = rooms.get(currentRoomCode);
-        const playerColor = getPlayerColor(room, socket.id);
-
         socket.to(currentRoomCode).emit('player_left', {
             color: playerColor,
             playerName: (playerColor && room.players[playerColor]) ? room.players[playerColor].name : 'Opponent'
@@ -530,21 +471,16 @@ io.on('connection', (socket) => {
         }
 
         socket.leave(currentRoomCode);
-        console.log(`[Server] Socket ${socket.id} left room "${currentRoomCode}"`);
         currentRoomCode = null;
+        playerColor = null;
 
         if (typeof callback === 'function') callback({ success: true });
-    }
-
-    socket.on('leave_room', handleLeaveRoom);
-    socket.on('leaveRoom', handleLeaveRoom);
+    });
 
     // 7. Handle Disconnection
     socket.on('disconnect', () => {
-        console.log(`[Socket.IO] Client disconnected: ${socket.id}`);
         if (!currentRoomCode || !rooms.has(currentRoomCode)) return;
         const room = rooms.get(currentRoomCode);
-        const playerColor = getPlayerColor(room, socket.id);
 
         if (playerColor && room.players[playerColor]) {
             room.players[playerColor].connected = false;
@@ -563,7 +499,7 @@ io.on('connection', (socket) => {
             room.abandonTimeout = setTimeout(() => {
                 stopClock(room);
                 rooms.delete(currentRoomCode);
-                console.log(`[Server] Cleaned up abandoned room: ${currentRoomCode}`);
+                console.log(`Cleaned up abandoned room: ${currentRoomCode}`);
             }, 5 * 60 * 1000); // 5 minutes
         }
     });
