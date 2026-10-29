@@ -1,0 +1,30 @@
+{
+  "name": "js",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pramod3103-priya/Chess.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/pramod3103-priya/Chess/issues"
+  },
+  "homepage": "https://github.com/pramod3103-priya/Chess#readme",
+  "dependencies": {
+    "chess.js": "^1.4.0",
+    "express": "^5.3.0",
+    "socket.io": "^4.8.4"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4"
+  }
+}

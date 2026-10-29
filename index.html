@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -7,8 +8,11 @@
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
+        rel="stylesheet">
 </head>
+
 <body>
     <div class="app-layout">
         <!-- Main Top Bar -->
@@ -16,11 +20,11 @@
             <div class="brand">
                 <div class="brand-icon">♟</div>
                 <div class="brand-text">
-                    <h1>Antigravity Chess</h1>
+                    <h1>Pramod Chess </h1>
                     <span class="brand-badge">Vanilla JS</span>
                 </div>
             </div>
-            
+
             <div class="header-actions">
                 <button id="soundToggleBtn" class="icon-btn" title="Toggle Sound (M)" aria-label="Toggle sound">
                     <span id="soundIcon">🔊</span>
@@ -41,9 +45,12 @@
                             <span class="player-status-tag" id="topPlayerTag">Black</span>
                         </div>
                     </div>
-                    <div class="player-captures">
-                        <div class="captured-tray" id="topCapturedTray"></div>
-                        <span class="material-advantage" id="topMaterialAdvantage"></span>
+                    <div class="player-bar-right">
+                        <div class="player-clock" id="topClock">10:00</div>
+                        <div class="player-captures">
+                            <div class="captured-tray" id="topCapturedTray"></div>
+                            <span class="material-advantage" id="topMaterialAdvantage"></span>
+                        </div>
                     </div>
                 </div>
 
@@ -74,9 +81,12 @@
                             <span class="player-status-tag" id="bottomPlayerTag">White</span>
                         </div>
                     </div>
-                    <div class="player-captures">
-                        <div class="captured-tray" id="bottomCapturedTray"></div>
-                        <span class="material-advantage" id="bottomMaterialAdvantage"></span>
+                    <div class="player-bar-right">
+                        <div class="player-clock" id="bottomClock">10:00</div>
+                        <div class="player-captures">
+                            <div class="captured-tray" id="bottomCapturedTray"></div>
+                            <span class="material-advantage" id="bottomMaterialAdvantage"></span>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -104,7 +114,11 @@
                         </button>
                         <button id="modePvpBtn" class="mode-btn" data-mode="pvp">
                             <span class="mode-icon">👥</span>
-                            <span>vs Player</span>
+                            <span>Pass &amp; Play</span>
+                        </button>
+                        <button id="modeOnlineBtn" class="mode-btn" data-mode="online">
+                            <span class="mode-icon">🌐</span>
+                            <span>Play Online</span>
                         </button>
                     </div>
 
@@ -115,6 +129,91 @@
                             <button class="diff-btn" data-diff="easy">Easy</button>
                             <button class="diff-btn active" data-diff="medium">Medium</button>
                             <button class="diff-btn" data-diff="hard">Hard</button>
+                        </div>
+                    </div>
+
+                    <!-- Online Room Panel (shown when Play Online is selected) -->
+                    <div class="online-room-panel hidden" id="onlineRoomPanel">
+                        <!-- Room Subtabs: Create vs Join -->
+                        <div class="room-subtabs" id="roomSubtabs">
+                            <button id="tabCreateRoom" class="room-subtab active">Create Room</button>
+                            <button id="tabJoinRoom" class="room-subtab">Join Room</button>
+                        </div>
+
+                        <!-- View 1: Create Room -->
+                        <div id="viewCreateRoom" class="room-view">
+                            <p class="room-desc">Generate a 6-character room code to invite a friend:</p>
+                            <button id="createRoomBtn" class="action-btn primary full-width">
+                                <span class="btn-icon">➕</span>
+                                <span>Create Room</span>
+                            </button>
+                            <div id="createStatusText" class="room-status-msg"></div>
+
+                            <div id="createdRoomInfo" class="created-room-info hidden">
+                                <div class="code-display-card">
+                                    <div class="code-meta">
+                                        <span class="code-title">ROOM CODE</span>
+                                        <span class="code-role-tag">You play White ⚪</span>
+                                    </div>
+                                    <div class="code-value-row">
+                                        <span class="room-code-badge" id="displayRoomCode">------</span>
+                                        <button id="copyCodeBtn" class="copy-btn" title="Copy Room Code">
+                                            📋 Copy Code
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="waiting-box">
+                                    <span class="radar-dot"></span>
+                                    <span id="waitingStatusText">Waiting for opponent to join...</span>
+                                </div>
+
+                                <button id="copyLinkBtn" class="action-btn secondary full-width">
+                                    <span class="btn-icon">🔗</span>
+                                    <span>Copy Game Invite Link</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- View 2: Join Room -->
+                        <div id="viewJoinRoom" class="room-view hidden">
+                            <p class="room-desc">Enter the 6-character room code shared by your friend:</p>
+                            <div class="join-input-group">
+                                <input type="text" id="joinRoomInput" class="room-input" placeholder="e.g. A7K9PX" maxlength="6" autocomplete="off" spellcheck="false" />
+                                <button id="joinRoomBtn" class="action-btn primary">
+                                    <span>Join Room</span>
+                                </button>
+                            </div>
+                            <div id="joinStatusText" class="room-status-msg"></div>
+                        </div>
+
+                        <!-- View 3: Active Connected Match -->
+                        <div id="viewActiveRoom" class="room-view hidden">
+                            <div class="active-room-card">
+                                <div class="connected-row">
+                                    <span class="online-indicator"></span>
+                                    <span class="active-room-text">Room: <strong id="activeRoomCode">------</strong></span>
+                                </div>
+                                <div class="player-role-badge" id="playerRoleBadge">You: White ⚪</div>
+                            </div>
+                            <div class="connection-status-bar" id="connectionStatusBar">
+                                <span class="status-indicator-dot" id="opponentStatusDot">🟢</span>
+                                <span id="opponentStatusText">Opponent Connected</span>
+                            </div>
+                            <div class="online-action-row">
+                                <button id="onlineResignBtn" class="action-btn danger">
+                                    <span class="btn-icon">🏳</span>
+                                    <span>Resign</span>
+                                </button>
+                                <button id="onlineRematchBtn" class="action-btn primary">
+                                    <span class="btn-icon">🔄</span>
+                                    <span>Rematch</span>
+                                </button>
+                            </div>
+                            <button id="leaveRoomBtn" class="action-btn secondary full-width">
+                                <span class="btn-icon">🚪</span>
+                                <span>Exit Room</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -186,12 +285,24 @@
             <h2 id="gameOverTitle">Checkmate!</h2>
             <p id="gameOverReason">White wins the game</p>
             <div class="game-over-actions">
+                <button id="gameOverRematchBtn" class="action-btn primary hidden">
+                    <span class="btn-icon">🔄</span>
+                    <span>Request Rematch</span>
+                </button>
                 <button id="gameOverRestartBtn" class="action-btn primary">Play Again</button>
                 <button id="gameOverReviewBtn" class="action-btn">Review Board</button>
             </div>
         </div>
     </div>
 
+    <!-- Socket.IO Client with CDN fallback -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        if (typeof io === 'undefined') {
+            document.write('<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"><\/script>');
+        }
+    </script>
     <script src="script.js"></script>
 </body>
+
 </html>

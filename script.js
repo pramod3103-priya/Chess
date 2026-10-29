@@ -250,9 +250,15 @@
         positionCounts: {}, // for threefold repetition
         
         isFlipped: false,
-        gameMode: 'pve', // 'pve' (vs computer) or 'pvp' (vs player)
+        gameMode: 'pve', // 'pve' (vs computer), 'pvp' (vs player), or 'online' (room code)
         aiDifficulty: 'medium', // 'easy', 'medium', 'hard'
         aiColor: 'b',
+        
+        // Online Room State
+        onlineRole: null, // 'host' or 'guest'
+        onlineColor: null, // 'w' or 'b'
+        onlineConnected: false,
+        onlineRoomCode: null,
         
         selectedSquare: null, // { r, c }
         legalMovesForSelected: [],
@@ -1016,6 +1022,25 @@
         updateMoveHistory();
         renderCapturedPieces();
 
+        // Broadcast move to opponent if in Online mode and this was a local move
+        if (gameState.gameMode === 'online' && !isAi) {
+            sendNetworkMessage({
+                type: 'move',
+                msgId: Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+                move: {
+                    from: move.from,
+                    to: move.to,
+                    piece: move.piece,
+                    captured: move.captured,
+                    isPromotion: move.isPromotion,
+                    promotedTo: move.promotedTo,
+                    isCastling: move.isCastling,
+                    isEnPassant: move.isEnPassant,
+                    isPawnDouble: move.isPawnDouble
+                }
+            });
+        }
+
         // Trigger AI move if in PvE mode and it's AI's turn
         if (!gameState.isGameOver && gameState.gameMode === 'pve' && gameState.turn === gameState.aiColor) {
             triggerAiMove();
@@ -1025,6 +1050,9 @@
     }
 
     function undoMove() {
+        if (gameState.gameMode === 'online') {
+            return; // Undo disabled in online room matches
+        }
         if (undoStack.length === 0) return;
 
         // Cancel any pending AI computation
@@ -1078,7 +1106,7 @@
         playSound('move');
     }
 
-    function restartGame() {
+    function restartGame(isRemote = false) {
         if (aiTimeoutId) {
             clearTimeout(aiTimeoutId);
             aiTimeoutId = null;
@@ -1116,6 +1144,13 @@
         updateMoveHistory();
         renderCapturedPieces();
         playSound('castle');
+
+        if (gameState.gameMode === 'online' && !isRemote && gameState.onlineConnected) {
+            sendNetworkMessage({
+                type: 'restart',
+                msgId: Date.now() + '-rst'
+            });
+        }
 
         if (gameState.gameMode === 'pve' && gameState.turn === gameState.aiColor) {
             triggerAiMove();
@@ -1176,7 +1211,14 @@
             promotedTo: pieceType
         };
         hidePromotionModal();
-        makeMove(move);
+        if (gameState.gameMode === 'online') {
+            sendOnlineMove(move);
+            gameState.selectedSquare = null;
+            gameState.legalMovesForSelected = [];
+            renderBoard();
+        } else {
+            makeMove(move);
+        }
     }
 
     /* ==========================================================================
@@ -1439,6 +1481,11 @@
                         if (gameState.isThinking || gameState.isGameOver) return e.preventDefault();
                         if (piece.color !== gameState.turn) return e.preventDefault();
                         if (gameState.gameMode === 'pve' && piece.color === gameState.aiColor) return e.preventDefault();
+                        if (gameState.gameMode === 'online') {
+                            if (!gameState.onlineConnected || piece.color !== gameState.onlineColor || gameState.turn !== gameState.onlineColor) {
+                                return e.preventDefault();
+                            }
+                        }
 
                         // Snap back from history review if dragging
                         if (gameState.viewHistoryIndex !== null) {
@@ -1486,6 +1533,10 @@
     function handleSquareClick(r, c) {
         if (gameState.isGameOver || gameState.isThinking) return;
         if (gameState.gameMode === 'pve' && gameState.turn === gameState.aiColor) return;
+        if (gameState.gameMode === 'online') {
+            if (!gameState.onlineConnected) return;
+            if (gameState.turn !== gameState.onlineColor) return;
+        }
 
         // If viewing history, snap back to live position first
         if (gameState.viewHistoryIndex !== null) {
@@ -1499,6 +1550,7 @@
         // 1. If no square currently selected:
         if (!gameState.selectedSquare) {
             if (clickedPiece && clickedPiece.color === gameState.turn) {
+                if (gameState.gameMode === 'online' && clickedPiece.color !== gameState.onlineColor) return;
                 gameState.selectedSquare = { r, c };
                 gameState.legalMovesForSelected = getLegalMoves(gameState.turn, gameState.board, gameState)
                     .filter(m => m.from.r === r && m.from.c === c);
@@ -1525,12 +1577,21 @@
                 return;
             }
 
+            if (gameState.gameMode === 'online') {
+                sendOnlineMove(legalMove);
+                gameState.selectedSquare = null;
+                gameState.legalMovesForSelected = [];
+                renderBoard();
+                return;
+            }
+
             makeMove(legalMove);
             return;
         }
 
         // 4. If clicking another piece of the same color, switch selection
         if (clickedPiece && clickedPiece.color === gameState.turn) {
+            if (gameState.gameMode === 'online' && clickedPiece.color !== gameState.onlineColor) return;
             gameState.selectedSquare = { r, c };
             gameState.legalMovesForSelected = getLegalMoves(gameState.turn, gameState.board, gameState)
                 .filter(m => m.from.r === r && m.from.c === c);
@@ -1589,6 +1650,27 @@
             statusEl.textContent = gameState.gameOverTitle;
             subStatusEl.textContent = gameState.gameOverReason;
             subStatusEl.className = 'sub-status alert';
+            return;
+        }
+
+        if (gameState.gameMode === 'online') {
+            if (!gameState.onlineConnected) {
+                statusEl.textContent = 'Room: ' + (gameState.onlineRoomCode || 'WAITING');
+                subStatusEl.innerHTML = `<span>Waiting for opponent to join...</span>`;
+                subStatusEl.className = 'sub-status thinking';
+                return;
+            }
+
+            const isMyTurn = (gameState.turn === gameState.onlineColor);
+            if (isMyTurn) {
+                statusEl.textContent = `Your Turn (${colorName})`;
+                subStatusEl.textContent = gameState.inCheckSquare ? `Check! Your King is under attack!` : 'Make your move';
+                subStatusEl.className = gameState.inCheckSquare ? 'sub-status alert' : 'sub-status';
+            } else {
+                statusEl.textContent = `Opponent's Turn (${colorName})`;
+                subStatusEl.textContent = gameState.inCheckSquare ? `Check! Opponent King is under attack!` : 'Waiting for opponent to move...';
+                subStatusEl.className = gameState.inCheckSquare ? 'sub-status alert' : 'sub-status thinking';
+            }
             return;
         }
 
@@ -1761,6 +1843,18 @@
         const bottomTag = document.getElementById('bottomPlayerTag');
         const bottomAvatar = document.getElementById('bottomPlayerAvatar');
 
+        if (gameState.gameMode === 'online') {
+            const isWhitePlayer = (gameState.onlineColor === 'w');
+            bottomName.textContent = 'You';
+            bottomAvatar.textContent = isWhitePlayer ? '⚪' : '⚫';
+            bottomTag.textContent = isWhitePlayer ? 'White' : 'Black';
+
+            topName.textContent = gameState.onlineConnected ? 'Opponent (Online)' : 'Waiting for Opponent...';
+            topAvatar.textContent = gameState.onlineConnected ? (isWhitePlayer ? '⚫' : '⚪') : '⏳';
+            topTag.textContent = isWhitePlayer ? 'Black' : 'White';
+            return;
+        }
+
         if (!gameState.isFlipped) {
             // Standard perspective: White bottom, Black top
             if (gameState.gameMode === 'pve') {
@@ -1801,10 +1895,20 @@
         const titleEl = document.getElementById('gameOverTitle');
         const reasonEl = document.getElementById('gameOverReason');
         const iconEl = document.getElementById('gameOverIcon');
+        const rematchBtn = document.getElementById('gameOverRematchBtn');
+        const restartBtn = document.getElementById('gameOverRestartBtn');
 
         titleEl.textContent = title;
         reasonEl.textContent = reason;
         iconEl.textContent = title.includes('Checkmate') ? '🏆' : '🤝';
+
+        if (gameState.gameMode === 'online') {
+            if (rematchBtn) rematchBtn.classList.remove('hidden');
+            if (restartBtn) restartBtn.classList.add('hidden');
+        } else {
+            if (rematchBtn) rematchBtn.classList.add('hidden');
+            if (restartBtn) restartBtn.classList.remove('hidden');
+        }
 
         modal.classList.remove('hidden');
     }
@@ -1815,20 +1919,749 @@
     }
 
     /* ==========================================================================
-       12. Event Listeners & Initialization
+       12. Online Room & Real-Time Multiplayer Networking (Socket.IO Backend)
+       ========================================================================== */
+
+    const SESSION_STORAGE_KEY = 'pramod_chess_multiplayer_session';
+    let socket = null;
+    let localClocks = { white: 600, black: 600 };
+
+    function getBackendUrl() {
+        if (typeof window !== 'undefined' && window.location) {
+            const port = window.location.port;
+            const proto = window.location.protocol;
+            if ((proto === 'http:' || proto === 'https:') && (port === '3000' || port === '')) {
+                return ''; // Same origin
+            }
+        }
+        return 'http://localhost:3000';
+    }
+
+    function getSocket() {
+        if (socket) return socket;
+        if (typeof io === 'undefined') {
+            console.error('[Multiplayer] Socket.IO library is not loaded');
+            return null;
+        }
+        try {
+            const backendUrl = getBackendUrl();
+            console.log('[Multiplayer] Connecting Socket.IO to:', backendUrl || window.location.origin);
+            socket = io(backendUrl, {
+                transports: ['websocket', 'polling'],
+                timeout: 10000,
+                reconnectionAttempts: 10,
+                reconnectionDelay: 1000
+            });
+            setupSocketListeners(socket);
+            return socket;
+        } catch (e) {
+            console.error('[Multiplayer] Socket initialization error:', e);
+            return null;
+        }
+    }
+
+    function formatTime(totalSeconds) {
+        if (typeof totalSeconds !== 'number' || isNaN(totalSeconds) || totalSeconds < 0) totalSeconds = 0;
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function updateClocksDisplay(clocks, activeTurn) {
+        if (!clocks) return;
+        localClocks = clocks;
+
+        const topClock = document.getElementById('topClock');
+        const bottomClock = document.getElementById('bottomClock');
+        if (!topClock || !bottomClock) return;
+
+        // In online mode, determine who is top and who is bottom based on board orientation
+        const isWhiteBottom = !gameState.isFlipped;
+        const bottomColor = isWhiteBottom ? 'white' : 'black';
+        const topColor = isWhiteBottom ? 'black' : 'white';
+
+        const bottomSeconds = clocks[bottomColor] ?? 600;
+        const topSeconds = clocks[topColor] ?? 600;
+
+        bottomClock.textContent = formatTime(bottomSeconds);
+        topClock.textContent = formatTime(topSeconds);
+
+        // Turn indicator on clocks
+        const turnColorName = (activeTurn === 'w' || activeTurn === 'white') ? 'white' : 'black';
+
+        if (turnColorName === bottomColor) {
+            bottomClock.classList.add('active-clock');
+            topClock.classList.remove('active-clock');
+        } else {
+            topClock.classList.add('active-clock');
+            bottomClock.classList.remove('active-clock');
+        }
+
+        // Low time warning (< 30s)
+        if (bottomSeconds < 30) {
+            bottomClock.classList.add('low-time');
+        } else {
+            bottomClock.classList.remove('low-time');
+        }
+
+        if (topSeconds < 30) {
+            topClock.classList.add('low-time');
+        } else {
+            topClock.classList.remove('low-time');
+        }
+    }
+
+    function algebraicToSquare(sq) {
+        if (!sq || sq.length < 2) return null;
+        const c = sq.charCodeAt(0) - 97;
+        const r = 8 - parseInt(sq[1], 10);
+        return { r, c };
+    }
+
+    function setBoardFromFen(fen) {
+        if (!fen) return;
+        const parts = fen.split(' ');
+        const rows = parts[0].split('/');
+        const newBoard = Array(8).fill(null).map(() => Array(8).fill(null));
+
+        for (let r = 0; r < 8; r++) {
+            let c = 0;
+            for (let i = 0; i < rows[r].length; i++) {
+                const char = rows[r][i];
+                if (char >= '1' && char <= '8') {
+                    c += parseInt(char, 10);
+                } else {
+                    const color = (char === char.toUpperCase()) ? 'w' : 'b';
+                    const type = char.toLowerCase();
+                    newBoard[r][c] = { color, type };
+                    c++;
+                }
+            }
+        }
+
+        gameState.board = newBoard;
+        if (parts[1]) gameState.turn = parts[1]; // 'w' or 'b'
+    }
+
+    function showCreateStatus(msg, type = 'info') {
+        const el = document.getElementById('createStatusText');
+        if (el) {
+            el.textContent = msg;
+            el.className = 'room-status-msg ' + type;
+        }
+    }
+
+    function restoreCreateBtn() {
+        const btn = document.getElementById('createRoomBtn') || document.getElementById('generateRoomBtn');
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+            btn.innerHTML = '<span class="btn-icon">➕</span><span>Create Room</span>';
+        }
+    }
+
+    function showJoinStatus(msg, type = 'info') {
+        const el = document.getElementById('joinStatusText');
+        if (el) {
+            el.textContent = msg;
+            el.className = 'room-status-msg ' + type;
+        }
+    }
+
+    function onOpponentConnected() {
+        gameState.onlineConnected = true;
+
+        // Hide Create / Join subtabs, show Active Room UI
+        document.getElementById('viewCreateRoom').classList.add('hidden');
+        document.getElementById('viewJoinRoom').classList.add('hidden');
+        document.getElementById('roomSubtabs').classList.add('hidden');
+        document.getElementById('viewActiveRoom').classList.remove('hidden');
+
+        document.getElementById('activeRoomCode').textContent = gameState.onlineRoomCode || '------';
+        const roleText = gameState.onlineColor === 'w' ? 'You: White ⚪ (Host)' : 'You: Black ⚫ (Guest)';
+        document.getElementById('playerRoleBadge').textContent = roleText;
+
+        const dot = document.getElementById('opponentStatusDot');
+        const text = document.getElementById('opponentStatusText');
+        if (dot) dot.textContent = '🟢';
+        if (text) text.textContent = 'Opponent Connected';
+
+        updatePlayerBars();
+        updateGameStatus();
+    }
+
+    function createOnlineRoom() {
+        console.log('[Multiplayer] Create Room button clicked');
+        showCreateStatus('', 'info');
+
+        // 1. Disable the button temporarily to prevent duplicate requests
+        const btn = document.getElementById('createRoomBtn') || document.getElementById('generateRoomBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.add('loading');
+            btn.innerHTML = '<span>⏳ Creating Room...</span>';
+        }
+
+        // 2. Connect to the backend using existing Socket.IO connection
+        const sock = getSocket();
+        if (!sock) {
+            const err = 'Cannot connect to backend server. Make sure "node server.js" is running on port 3000.';
+            console.error(err);
+            showCreateStatus(err, 'error');
+            restoreCreateBtn();
+            return;
+        }
+
+        function emitCreate() {
+            showCreateStatus('Requesting room from server...', 'info');
+            console.log('[Multiplayer] Emitting createRoom event to server...');
+
+            let hasTimedOut = false;
+            const timer = setTimeout(() => {
+                hasTimedOut = true;
+                console.error('[Multiplayer] Room creation request timed out after 10s.');
+                showCreateStatus('Server did not respond. Check backend terminal.', 'error');
+                restoreCreateBtn();
+            }, 10000);
+
+            // 3. Emit room creation event
+            sock.emit('createRoom', { name: 'Player 1' }, (response) => {
+                if (hasTimedOut) return;
+                clearTimeout(timer);
+                restoreCreateBtn();
+
+                console.log('[Multiplayer] createRoom response:', response);
+
+                if (!response || !response.success || (!response.roomCode && !response.code)) {
+                    const errMsg = (response && response.error) ? response.error : 'Room creation failed on server.';
+                    console.error('[Multiplayer] Create Room error:', errMsg);
+                    showCreateStatus(errMsg, 'error');
+                    return;
+                }
+
+                // 4. Extract generated unique 6-character room code
+                const code = response.roomCode || response.code;
+                console.log(`[Multiplayer] Room created successfully! Room Code: ${code}`);
+
+                gameState.gameMode = 'online';
+                gameState.onlineRole = 'host';
+                gameState.onlineColor = 'w';
+                gameState.onlineConnected = false;
+                gameState.onlineRoomCode = code;
+                gameState.isFlipped = false;
+
+                // Save session
+                sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
+                    roomCode: code,
+                    token: response.sessionToken,
+                    color: 'white'
+                }));
+
+                // 7. Display generated room code in UI
+                const displayCodeEl = document.getElementById('displayRoomCode');
+                if (displayCodeEl) displayCodeEl.textContent = code;
+
+                // 8. Display Copy Code button & 9. Show Waiting screen
+                const createdInfoEl = document.getElementById('createdRoomInfo');
+                if (createdInfoEl) createdInfoEl.classList.remove('hidden');
+
+                const waitingTextEl = document.getElementById('waitingStatusText');
+                if (waitingTextEl) waitingTextEl.textContent = 'Waiting for opponent to join...';
+
+                document.getElementById('viewActiveRoom').classList.add('hidden');
+                document.getElementById('roomSubtabs').classList.remove('hidden');
+                document.getElementById('viewCreateRoom').classList.remove('hidden');
+                document.getElementById('viewJoinRoom').classList.add('hidden');
+                showCreateStatus('Room created! Share your code with your opponent.', 'success');
+
+                restartGame(true);
+                updatePlayerBars();
+                updateGameStatus();
+                updateClocksDisplay({ white: 600, black: 600 }, 'w');
+            });
+        }
+
+        if (sock.connected) {
+            emitCreate();
+        } else {
+            showCreateStatus('Connecting to server...', 'info');
+            console.log('[Multiplayer] Waiting for socket connection...');
+
+            let connTimer = setTimeout(() => {
+                showCreateStatus('Could not connect to backend server on http://localhost:3000.', 'error');
+                restoreCreateBtn();
+            }, 6000);
+
+            sock.once('connect', () => {
+                clearTimeout(connTimer);
+                console.log('[Multiplayer] Socket connected! Emitting createRoom...');
+                emitCreate();
+            });
+
+            sock.once('connect_error', (err) => {
+                clearTimeout(connTimer);
+                console.error('[Multiplayer] Connection error:', err);
+                showCreateStatus('Backend server is unreachable. Please run "node server.js".', 'error');
+                restoreCreateBtn();
+            });
+        }
+    }
+
+    function joinOnlineRoom(inputCode) {
+        const sock = getSocket();
+        if (!sock) {
+            showJoinStatus('Cannot connect to server. Start server with "node server.js".', 'error');
+            return;
+        }
+
+        if (!inputCode || !inputCode.trim()) {
+            showJoinStatus('Please enter a 6-character room code', 'error');
+            return;
+        }
+
+        const code = inputCode.trim().toUpperCase();
+        showJoinStatus(`Connecting to room ${code}...`, 'info');
+
+        const joinBtn = document.getElementById('joinRoomBtn');
+        if (joinBtn) {
+            joinBtn.disabled = true;
+            joinBtn.innerHTML = '<span>⏳ Joining...</span>';
+        }
+
+        function restoreJoinBtn() {
+            if (joinBtn) {
+                joinBtn.disabled = false;
+                joinBtn.innerHTML = '<span>Join Room</span>';
+            }
+        }
+
+        function emitJoin() {
+            let sessionToken = null;
+            try {
+                const saved = JSON.parse(sessionStorage.getItem(SESSION_STORAGE_KEY) || '{}');
+                if (saved.roomCode === code) {
+                    sessionToken = saved.token;
+                }
+            } catch (e) {}
+
+            sock.emit('joinRoom', { roomCode: code, sessionToken, name: 'Player 2' }, (response) => {
+                restoreJoinBtn();
+                console.log('[Multiplayer] joinRoom response:', response);
+
+                if (!response || !response.success) {
+                    const err = (response && response.error) ? response.error : 'Failed to join room.';
+                    showJoinStatus(err, 'error');
+                    return;
+                }
+
+                showJoinStatus('Connected!', 'success');
+
+                const color = response.color; // 'white' or 'black'
+                gameState.gameMode = 'online';
+                gameState.onlineRole = (color === 'white') ? 'host' : 'guest';
+                gameState.onlineColor = (color === 'white') ? 'w' : 'b';
+                gameState.onlineRoomCode = code;
+                gameState.isFlipped = (gameState.onlineColor === 'b');
+
+                // Save session token
+                if (response.sessionToken) {
+                    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
+                        roomCode: code,
+                        token: response.sessionToken,
+                        color: response.color
+                    }));
+                }
+
+                // If gameState returned (reconnect or active room)
+                if (response.gameState) {
+                    const gs = response.gameState;
+                    setBoardFromFen(gs.fen);
+                    gameState.turn = gs.turn;
+                    gameState.inCheckSquare = gs.inCheck ? findKing(gs.turn, gameState.board) : null;
+                    if (gs.clocks) updateClocksDisplay(gs.clocks, gs.turn);
+                    if (gs.status === 'playing') {
+                        onOpponentConnected();
+                    }
+                }
+
+                renderBoard();
+                updatePlayerBars();
+                updateGameStatus();
+            });
+        }
+
+        if (sock.connected) {
+            emitJoin();
+        } else {
+            sock.once('connect', emitJoin);
+            sock.once('connect_error', () => {
+                restoreJoinBtn();
+                showJoinStatus('Backend server unreachable. Make sure "node server.js" is running.', 'error');
+            });
+        }
+    }
+
+    function sendOnlineMove(move) {
+        const sock = getSocket();
+        if (!sock || !gameState.onlineRoomCode) return;
+
+        const fromSq = squareToAlgebraic(move.from.r, move.from.c);
+        const toSq = squareToAlgebraic(move.to.r, move.to.c);
+        const promotion = move.promotedTo || (move.isPromotion ? 'q' : undefined);
+
+        sock.emit('makeMove', {
+            from: fromSq,
+            to: toSq,
+            promotion: promotion
+        }, (res) => {
+            if (!res || !res.success) {
+                console.warn('[Multiplayer] Move rejected by server:', res ? res.error : 'Unknown error');
+                renderBoard();
+                if (res && res.error) {
+                    showJoinStatus(res.error, 'error');
+                }
+            }
+        });
+    }
+
+    function onlineResign() {
+        const sock = getSocket();
+        if (!sock || !gameState.onlineConnected || gameState.isGameOver) return;
+        if (confirm('Are you sure you want to resign this game?')) {
+            sock.emit('resign');
+        }
+    }
+
+    function onlineRematch() {
+        const sock = getSocket();
+        if (!sock || !gameState.onlineRoomCode) return;
+        const btn = document.getElementById('onlineRematchBtn');
+        const modalBtn = document.getElementById('gameOverRematchBtn');
+
+        if (btn) btn.innerHTML = '<span>⏳ Waiting...</span>';
+        if (modalBtn) modalBtn.innerHTML = '<span>⏳ Rematch Offered...</span>';
+
+        sock.emit('requestRematch', {}, (res) => {
+            if (res && res.waiting) {
+                alert('Rematch request sent! Waiting for opponent to accept.');
+            }
+        });
+    }
+
+    function leaveOnlineRoom() {
+        const sock = getSocket();
+        if (sock && gameState.onlineRoomCode) {
+            sock.emit('leaveRoom');
+        }
+
+        sessionStorage.removeItem(SESSION_STORAGE_KEY);
+
+        gameState.gameMode = 'pve';
+        gameState.onlineRole = null;
+        gameState.onlineColor = null;
+        gameState.onlineConnected = false;
+        gameState.onlineRoomCode = null;
+        gameState.isFlipped = false;
+
+        document.getElementById('modeAiBtn').classList.add('active');
+        document.getElementById('modePvpBtn').classList.remove('active');
+        document.getElementById('modeOnlineBtn').classList.remove('active');
+        document.getElementById('difficultyGroup').classList.remove('hidden');
+        document.getElementById('onlineRoomPanel').classList.add('hidden');
+        document.getElementById('viewActiveRoom').classList.add('hidden');
+        document.getElementById('roomSubtabs').classList.remove('hidden');
+        document.getElementById('createdRoomInfo').classList.add('hidden');
+
+        const topClock = document.getElementById('topClock');
+        const bottomClock = document.getElementById('bottomClock');
+        if (topClock) { topClock.textContent = '10:00'; topClock.className = 'player-clock'; }
+        if (bottomClock) { bottomClock.textContent = '10:00'; bottomClock.className = 'player-clock'; }
+
+        restartGame(true);
+        updatePlayerBars();
+        updateGameStatus();
+    }
+
+    function setupSocketListeners(sock) {
+        if (!sock) return;
+
+        sock.on('connect', () => {
+            console.log('[Multiplayer] Socket connected to server with ID:', sock.id);
+            showCreateStatus('', 'info');
+            checkReconnectSession();
+        });
+
+        sock.on('connect_error', (err) => {
+            console.warn('[Multiplayer] Connection error:', err.message);
+        });
+
+        sock.on('game_start', (data) => {
+            console.log('[Multiplayer] Game Started event received:', data);
+            gameState.onlineConnected = true;
+            gameState.isGameOver = false;
+            setBoardFromFen(data.fen);
+            gameState.turn = data.turn;
+            gameState.history = [];
+            gameState.captured = { w: [], b: [] };
+
+            onOpponentConnected();
+            playSound('castle');
+            renderBoard();
+            updatePlayerBars();
+            updateGameStatus();
+            updateMoveHistory();
+            renderCapturedPieces();
+            if (data.clocks) updateClocksDisplay(data.clocks, data.turn);
+        });
+
+        sock.on('clock_tick', (data) => {
+            if (gameState.gameMode === 'online') {
+                updateClocksDisplay(data.clocks, data.turn);
+            }
+        });
+
+        sock.on('move_made', (data) => {
+            console.log('[Multiplayer] Move made received from server:', data);
+            setBoardFromFen(data.fen);
+            gameState.turn = data.turn;
+
+            const from = algebraicToSquare(data.move.from);
+            const to = algebraicToSquare(data.move.to);
+
+            gameState.lastMove = { from, to };
+            gameState.selectedSquare = null;
+            gameState.legalMovesForSelected = [];
+            gameState.inCheckSquare = data.inCheck ? findKing(data.turn, gameState.board) : null;
+
+            // History & Captures
+            let capturedPiece = null;
+            if (data.move.captured) {
+                const oppColor = data.move.color === 'w' ? 'b' : 'w';
+                capturedPiece = { type: data.move.captured, color: oppColor };
+                gameState.captured[data.move.color].push(data.move.captured);
+            }
+
+            gameState.history.push({
+                san: data.move.san,
+                from,
+                to,
+                piece: { type: data.move.piece, color: data.move.color },
+                captured: capturedPiece,
+                boardSnapshot: cloneBoard(gameState.board)
+            });
+
+            // Audio feedback
+            if (data.move.flags && (data.move.flags.includes('k') || data.move.flags.includes('q'))) {
+                playSound('castle');
+            } else if (data.move.flags && data.move.flags.includes('p')) {
+                playSound('promote');
+            } else if (data.move.captured) {
+                playSound('capture');
+            } else if (data.inCheck) {
+                playSound('check');
+            } else {
+                playSound('move');
+            }
+
+            if (data.clocks) {
+                updateClocksDisplay(data.clocks, data.turn);
+            }
+
+            // Game over handling
+            if (data.isGameOver) {
+                gameState.isGameOver = true;
+                const winnerName = data.winner ? (data.winner === 'white' ? 'White' : 'Black') : null;
+                gameState.gameOverTitle = winnerName ? `${winnerName} Wins! 🎉` : 'Draw';
+                gameState.gameOverReason = data.endReason || 'Game Over';
+                playSound('gameover');
+                showGameOverModal(gameState.gameOverTitle, gameState.gameOverReason);
+                const rematchBtn = document.getElementById('gameOverRematchBtn');
+                if (rematchBtn) rematchBtn.classList.remove('hidden');
+            }
+
+            renderBoard();
+            updateGameStatus();
+            updateMoveHistory();
+            renderCapturedPieces();
+        });
+
+        sock.on('game_over', (data) => {
+            gameState.isGameOver = true;
+            const winnerName = data.winner ? (data.winner === 'white' ? 'White' : 'Black') : null;
+            gameState.gameOverTitle = winnerName ? `${winnerName} Wins!` : 'Draw';
+            gameState.gameOverReason = data.endReason;
+            playSound('gameover');
+            showGameOverModal(gameState.gameOverTitle, gameState.gameOverReason);
+            const rematchBtn = document.getElementById('gameOverRematchBtn');
+            if (rematchBtn) rematchBtn.classList.remove('hidden');
+            updateGameStatus();
+            if (data.clocks) updateClocksDisplay(data.clocks, null);
+        });
+
+        sock.on('rematch_offered', (data) => {
+            const btn = document.getElementById('onlineRematchBtn');
+            const modalBtn = document.getElementById('gameOverRematchBtn');
+            if (btn) {
+                btn.innerHTML = '<span>🤝 Accept Rematch</span>';
+            }
+            if (modalBtn) {
+                modalBtn.innerHTML = '<span>🤝 Accept Rematch</span>';
+            }
+            showJoinStatus('Opponent offered a rematch! Click Rematch to accept.', 'info');
+        });
+
+        sock.on('rematch_started', (data) => {
+            hideGameOverModal();
+            const btn = document.getElementById('onlineRematchBtn');
+            const modalBtn = document.getElementById('gameOverRematchBtn');
+            if (btn) btn.innerHTML = '<span>🔄 Rematch</span>';
+            if (modalBtn) modalBtn.innerHTML = '<span>🔄 Request Rematch</span>';
+
+            gameState.onlineColor = (data.color === 'white') ? 'w' : 'b';
+            gameState.isFlipped = (gameState.onlineColor === 'b');
+            setBoardFromFen(data.fen);
+            gameState.turn = 'w';
+            gameState.history = [];
+            gameState.captured = { w: [], b: [] };
+            gameState.isGameOver = false;
+            gameState.lastMove = null;
+            gameState.inCheckSquare = null;
+
+            const roleText = gameState.onlineColor === 'w' ? 'You: White ⚪' : 'You: Black ⚫';
+            document.getElementById('playerRoleBadge').textContent = roleText;
+
+            updateClocksDisplay(data.clocks, 'w');
+            updatePlayerBars();
+            renderBoard();
+            updateGameStatus();
+            updateMoveHistory();
+            renderCapturedPieces();
+            playSound('castle');
+        });
+
+        sock.on('player_disconnected', (data) => {
+            const dot = document.getElementById('opponentStatusDot');
+            const text = document.getElementById('opponentStatusText');
+            if (dot) dot.textContent = '🟡';
+            if (text) text.textContent = 'Opponent disconnected (reconnecting...)';
+        });
+
+        sock.on('player_reconnected', (data) => {
+            const dot = document.getElementById('opponentStatusDot');
+            const text = document.getElementById('opponentStatusText');
+            if (dot) dot.textContent = '🟢';
+            if (text) text.textContent = 'Opponent Reconnected';
+        });
+
+        sock.on('player_left', (data) => {
+            const dot = document.getElementById('opponentStatusDot');
+            const text = document.getElementById('opponentStatusText');
+            if (dot) dot.textContent = '🔴';
+            if (text) text.textContent = 'Opponent left room';
+            showGameOverModal('Match Ended', `${data.playerName || 'Opponent'} left the room.`);
+        });
+    }
+
+    function checkReconnectSession() {
+        try {
+            const saved = sessionStorage.getItem(SESSION_STORAGE_KEY);
+            if (!saved) return;
+            const session = JSON.parse(saved);
+            if (session && session.roomCode && session.token) {
+                console.log('Restoring previous online session:', session.roomCode);
+                const modeOnlineBtn = document.getElementById('modeOnlineBtn');
+                if (modeOnlineBtn) modeOnlineBtn.click();
+                joinOnlineRoom(session.roomCode);
+            }
+        } catch (e) {
+            console.warn('Session reconnect error:', e);
+        }
+    }
+
+    function setupClipboardButtons() {
+        const copyCodeBtn = document.getElementById('copyCodeBtn');
+        const copyLinkBtn = document.getElementById('copyLinkBtn');
+
+        if (copyCodeBtn) {
+            copyCodeBtn.addEventListener('click', () => {
+                const code = gameState.onlineRoomCode || '';
+                if (!code) return;
+                navigator.clipboard.writeText(code).then(() => {
+                    const original = copyCodeBtn.textContent;
+                    copyCodeBtn.textContent = '✅ Copied!';
+                    setTimeout(() => { copyCodeBtn.textContent = original; }, 1800);
+                }).catch(() => {
+                    prompt('Copy room code:', code);
+                });
+            });
+        }
+
+        if (copyLinkBtn) {
+            copyLinkBtn.addEventListener('click', () => {
+                const code = gameState.onlineRoomCode || '';
+                if (!code) return;
+                const url = `${window.location.origin}${window.location.pathname}?room=${code}`;
+                navigator.clipboard.writeText(url).then(() => {
+                    const original = copyLinkBtn.innerHTML;
+                    copyLinkBtn.innerHTML = '<span>✅ Link Copied!</span>';
+                    setTimeout(() => { copyLinkBtn.innerHTML = original; }, 1800);
+                }).catch(() => {
+                    prompt('Copy game invite link:', url);
+                });
+            });
+        }
+    }
+
+    function checkUrlRoomCode() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const room = params.get('room');
+            if (room) {
+                const modeOnlineBtn = document.getElementById('modeOnlineBtn');
+                if (modeOnlineBtn) {
+                    modeOnlineBtn.click();
+                }
+                const tabJoin = document.getElementById('tabJoinRoom');
+                if (tabJoin) {
+                    tabJoin.click();
+                }
+                const joinInput = document.getElementById('joinRoomInput');
+                if (joinInput) {
+                    joinInput.value = room.toUpperCase();
+                }
+                joinOnlineRoom(room);
+            }
+        } catch (e) {
+            console.warn('URL param error:', e);
+        }
+    }
+
+    /* ==========================================================================
+       13. Event Listeners & Initialization
        ========================================================================== */
 
     function initEventListeners() {
         // Mode buttons
         const modeAiBtn = document.getElementById('modeAiBtn');
         const modePvpBtn = document.getElementById('modePvpBtn');
+        const modeOnlineBtn = document.getElementById('modeOnlineBtn');
         const difficultyGroup = document.getElementById('difficultyGroup');
+        const onlineRoomPanel = document.getElementById('onlineRoomPanel');
 
         modeAiBtn.addEventListener('click', () => {
             modeAiBtn.classList.add('active');
             modePvpBtn.classList.remove('active');
+            modeOnlineBtn.classList.remove('active');
             difficultyGroup.classList.remove('hidden');
+            onlineRoomPanel.classList.add('hidden');
+            if (gameState.gameMode === 'online' && gameState.onlineRoomCode) {
+                leaveOnlineRoom();
+            }
             gameState.gameMode = 'pve';
+            gameState.onlineRole = null;
+            gameState.onlineColor = null;
+            gameState.onlineConnected = false;
+            gameState.isFlipped = false;
             updatePlayerBars();
             restartGame();
         });
@@ -1836,11 +2669,97 @@
         modePvpBtn.addEventListener('click', () => {
             modePvpBtn.classList.add('active');
             modeAiBtn.classList.remove('active');
+            modeOnlineBtn.classList.remove('active');
             difficultyGroup.classList.add('hidden');
+            onlineRoomPanel.classList.add('hidden');
+            if (gameState.gameMode === 'online' && gameState.onlineRoomCode) {
+                leaveOnlineRoom();
+            }
             gameState.gameMode = 'pvp';
+            gameState.onlineRole = null;
+            gameState.onlineColor = null;
+            gameState.onlineConnected = false;
+            gameState.isFlipped = false;
             updatePlayerBars();
             restartGame();
         });
+
+        modeOnlineBtn.addEventListener('click', () => {
+            modeOnlineBtn.classList.add('active');
+            modeAiBtn.classList.remove('active');
+            modePvpBtn.classList.remove('active');
+            difficultyGroup.classList.add('hidden');
+            onlineRoomPanel.classList.remove('hidden');
+            gameState.gameMode = 'online';
+
+            updatePlayerBars();
+            updateGameStatus();
+        });
+
+        // Room subtabs
+        const tabCreateRoom = document.getElementById('tabCreateRoom');
+        const tabJoinRoom = document.getElementById('tabJoinRoom');
+        const viewCreateRoom = document.getElementById('viewCreateRoom');
+        const viewJoinRoom = document.getElementById('viewJoinRoom');
+
+        tabCreateRoom.addEventListener('click', () => {
+            tabCreateRoom.classList.add('active');
+            tabJoinRoom.classList.remove('active');
+            viewCreateRoom.classList.remove('hidden');
+            viewJoinRoom.classList.add('hidden');
+        });
+
+        tabJoinRoom.addEventListener('click', () => {
+            tabJoinRoom.classList.add('active');
+            tabCreateRoom.classList.remove('active');
+            viewJoinRoom.classList.remove('hidden');
+            viewCreateRoom.classList.add('hidden');
+        });
+
+        const createRoomBtn = document.getElementById('createRoomBtn') || document.getElementById('generateRoomBtn');
+        if (createRoomBtn) {
+            createRoomBtn.addEventListener('click', () => {
+                createOnlineRoom();
+            });
+        }
+        const generateRoomBtn = document.getElementById('generateRoomBtn');
+        if (generateRoomBtn && generateRoomBtn !== createRoomBtn) {
+            generateRoomBtn.addEventListener('click', () => {
+                createOnlineRoom();
+            });
+        }
+
+        document.getElementById('joinRoomBtn').addEventListener('click', () => {
+            const input = document.getElementById('joinRoomInput');
+            joinOnlineRoom(input.value);
+        });
+
+        document.getElementById('joinRoomInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('joinRoomBtn').click();
+            }
+        });
+
+        document.getElementById('leaveRoomBtn').addEventListener('click', () => {
+            leaveOnlineRoom();
+        });
+
+        const onlineResignBtn = document.getElementById('onlineResignBtn');
+        if (onlineResignBtn) {
+            onlineResignBtn.addEventListener('click', onlineResign);
+        }
+
+        const onlineRematchBtn = document.getElementById('onlineRematchBtn');
+        if (onlineRematchBtn) {
+            onlineRematchBtn.addEventListener('click', onlineRematch);
+        }
+
+        const gameOverRematchBtn = document.getElementById('gameOverRematchBtn');
+        if (gameOverRematchBtn) {
+            gameOverRematchBtn.addEventListener('click', onlineRematch);
+        }
+
+        setupClipboardButtons();
 
         // Difficulty buttons
         const diffButtons = document.querySelectorAll('.diff-btn');
@@ -1953,16 +2872,23 @@
         evaluateBoard,
         renderBoard,
         updateGameStatus,
-        updateMoveHistory
+        updateMoveHistory,
+        createOnlineRoom,
+        joinOnlineRoom,
+        leaveOnlineRoom,
+        onlineResign,
+        onlineRematch
     };
 
     // Initialize Game
     function init() {
         createBoard();
+        getSocket();
         initEventListeners();
         updateGameStatus();
         updatePlayerBars();
         renderCapturedPieces();
+        checkUrlRoomCode();
     }
 
     // Start
