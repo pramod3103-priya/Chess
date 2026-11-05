@@ -18,7 +18,7 @@ export default function App() {
         <Router>
             <AuthProvider>
                 <GameProvider>
-                    <div className="min-h-screen bg-[#141517] text-[#f3f4f6] flex flex-col font-sans">
+                    <div className="min-h-screen bg-[#111827] text-[#F9FAFB] flex flex-col font-sans selection:bg-[#374151] selection:text-[#F9FAFB]">
                         <Navbar />
                         <main className="flex-1">
                             <Routes>

@@ -4,8 +4,11 @@
   "description": "Production-ready MERN Stack Real-time Chess Server with Socket.IO, chess.js, and MongoDB",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "node server/server.js",
+    "dev": "node server/server.js",
+    "server": "node server/server.js",
+    "client": "npm run dev --prefix client",
+    "build": "npm run build --prefix client"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

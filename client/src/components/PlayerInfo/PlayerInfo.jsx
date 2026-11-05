@@ -1,7 +1,6 @@
 import React from 'react';
 import GameTimer from '../GameTimer/GameTimer';
 import CapturedTray from './CapturedTray';
-import { User } from 'lucide-react';
 
 export default function PlayerInfo({
     player,
@@ -17,18 +16,18 @@ export default function PlayerInfo({
     const isConnected = player?.connected !== false;
 
     return (
-        <div className="flex items-center justify-between w-full max-w-[620px] px-2 py-1.5 bg-[#1e2024]/80 backdrop-blur rounded-xl border border-[#2e323b]/60">
+        <div className="flex items-center justify-between w-full max-w-[620px] px-3 py-2 bg-[#273244] rounded-2xl border border-[#4B5563] shadow-md">
             {/* Player details */}
             <div className="flex items-center gap-3">
                 {/* Avatar with piece indicator circle */}
                 <div className="relative">
-                    <div className="w-10 h-10 rounded-xl bg-[#26292f] border border-[#3a3f4b] flex items-center justify-center font-bold text-gray-200 shadow-md">
+                    <div className="w-10 h-10 rounded-xl bg-[#1F2937] border border-[#4B5563] flex items-center justify-center font-bold text-[#F9FAFB] shadow-md">
                         {displayName.charAt(0).toUpperCase()}
                     </div>
                     {/* Color chip */}
                     <div
-                        className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-[#1e2024] shadow ${
-                            isWhite ? 'bg-white' : 'bg-[#2b2b2b]'
+                        className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-[#273244] shadow ${
+                            isWhite ? 'bg-white' : 'bg-[#1F2937] border-gray-400'
                         }`}
                         title={isWhite ? 'Playing White' : 'Playing Black'}
                     />
@@ -36,15 +35,15 @@ export default function PlayerInfo({
 
                 <div>
                     <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm md:text-base text-gray-100 truncate max-w-[150px] md:max-w-[200px]">
+                        <span className="font-semibold text-sm md:text-base text-[#F9FAFB] truncate max-w-[150px] md:max-w-[200px]">
                             {displayName}
                         </span>
-                        <span className="text-xs font-mono font-medium text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                        <span className="text-xs font-mono font-medium text-[#D1D5DB] bg-[#1F2937] border border-[#4B5563] px-1.5 py-0.5 rounded">
                             {rating}
                         </span>
                         {/* Connected status dot */}
                         <div
-                            className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-red-500 animate-ping'}`}
+                            className={`w-2 h-2 rounded-full ${isConnected ? 'bg-[#9CA3AF]' : 'bg-red-500 animate-ping'}`}
                             title={isConnected ? 'Connected' : 'Disconnected'}
                         />
                     </div>
@@ -61,4 +60,3 @@ export default function PlayerInfo({
         </div>
     );
 }
-

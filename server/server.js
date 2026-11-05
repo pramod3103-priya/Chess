@@ -2,7 +2,8 @@ const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const { connectDB } = require('./config/db');
 const initializeChessSocket = require('./socket/chessSocket');
@@ -23,22 +24,31 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
+// Dynamic CORS configuration allowing localhost, 127.0.0.1, LAN IPs, and CLIENT_URL
+const allowedOrigins = [CLIENT_URL, 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000', 'http://127.0.0.1:3000'];
+
+const corsOptions = {
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:') || origin.startsWith('http://192.168.')) {
+            return callback(null, true);
+        }
+        return callback(null, true);
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true
+};
+
 // Setup Socket.IO
 const io = new Server(server, {
-    cors: {
-        origin: [CLIENT_URL, 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000'],
-        methods: ['GET', 'POST'],
-        credentials: true
-    },
+    cors: corsOptions,
     pingTimeout: 60000,
     pingInterval: 25000
 });
 
 // Middlewares
-app.use(cors({
-    origin: [CLIENT_URL, 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000'],
-    credentials: true
-}));
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -57,7 +67,6 @@ app.use('/api/games', gameRoutes);
 app.use('/api/users', userRoutes);
 
 // Serve client dist build if present
-const path = require('path');
 const fs = require('fs');
 const clientDist = path.join(__dirname, '../client/dist');
 if (fs.existsSync(clientDist)) {

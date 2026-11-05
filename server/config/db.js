@@ -20,7 +20,7 @@ const connectDB = async () => {
         console.log(`🚀 Initializing standalone embedded MongoMemoryServer for seamless zero-setup execution...`);
 
         try {
-            await mongoose.disconnect().catch(() => {});
+            await mongoose.disconnect().catch(() => { });
             const { MongoMemoryServer } = require('mongodb-memory-server');
             mongod = await MongoMemoryServer.create();
             const uri = mongod.getUri();

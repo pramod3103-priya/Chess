@@ -113,10 +113,15 @@ const createGameREST = async (req, res) => {
 
         const initialTime = req.body.timeControl || 600;
         const inc = req.body.increment || 0;
+        const playerName = (req.body.playerName && req.body.playerName.trim()) ||
+            (req.user ? req.user.username : 'White');
+        const playerToken = req.body.playerToken || null;
 
         const game = await Game.create({
             roomId,
             whitePlayer: req.user ? req.user._id : null,
+            whiteName: playerName,
+            whitePlayerToken: playerToken,
             fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
             timeControl: { initial: initialTime, increment: inc },
             clocks: { white: initialTime, black: initialTime },
@@ -145,12 +150,22 @@ const joinGameREST = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Game room not found' });
         }
 
-        if (game.status === 'COMPLETED' || game.status === 'ABANDONED') {
+        if (game.status === 'CANCELLED') {
+            return res.status(400).json({ success: false, message: 'This room has been closed.' });
+        }
+
+        if (['COMPLETED', 'CHECKMATE', 'RESIGNED', 'TIMEOUT', 'DRAW', 'STALEMATE', 'ABANDONED'].includes(game.status)) {
             return res.status(400).json({ success: false, message: 'This game has already finished' });
         }
 
-        if (!game.blackPlayer && req.user && String(game.whitePlayer) !== String(req.user._id)) {
-            game.blackPlayer = req.user._id;
+        const playerName = (req.body.playerName && req.body.playerName.trim()) ||
+            (req.user ? req.user.username : 'Black');
+        const playerToken = req.body.playerToken || null;
+
+        if (!game.blackPlayerToken && !game.blackPlayer) {
+            game.blackPlayer = req.user ? req.user._id : null;
+            game.blackName = playerName;
+            game.blackPlayerToken = playerToken;
             game.status = 'ACTIVE';
             await game.save();
         }

@@ -7,16 +7,20 @@ export default {
   theme: {
     extend: {
       colors: {
-        'chess-bg': '#141517',
-        'chess-card': '#1e2024',
-        'chess-card-hover': '#26292f',
-        'chess-card-active': '#2f333b',
-        'chess-border': '#2e323b',
-        'chess-border-light': '#3a3f4b',
-        'board-light': '#f0d9b5',
-        'board-dark': '#b58863',
-        'board-highlight': '#f7f769',
-        'board-lastmove': 'rgba(255, 235, 59, 0.45)',
+        'chess-bg': '#111827',
+        'chess-surface': '#1F2937',
+        'chess-card': '#273244',
+        'chess-hover': '#374151',
+        'chess-border': '#4B5563',
+        'chess-primary-grey': '#9CA3AF',
+        'chess-light-grey': '#D1D5DB',
+        'chess-white': '#F9FAFB',
+        'board-light': '#D1D5DB',
+        'board-dark': '#64748B',
+        'board-border': '#374151',
+        'board-bg': '#1F2937',
+        'board-highlight': 'rgba(245, 158, 11, 0.45)',
+        'board-lastmove': 'rgba(209, 213, 219, 0.35)',
       },
       fontFamily: {
         sans: ['Plus Jakarta Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
@@ -26,4 +30,3 @@ export default {
   },
   plugins: [],
 };
-

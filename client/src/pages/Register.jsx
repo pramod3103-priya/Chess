@@ -39,14 +39,14 @@ export default function Register() {
     };
 
     return (
-        <div className="min-h-[calc(100vh-64px)] flex items-center justify-center p-4">
-            <div className="bg-[#1e2024] border border-[#2e323b] rounded-2xl max-w-md w-full p-8 shadow-2xl">
+        <div className="min-h-[calc(100vh-64px)] flex items-center justify-center p-4 bg-[#111827]">
+            <div className="bg-[#273244] border border-[#4B5563] rounded-2xl max-w-md w-full p-8 shadow-2xl">
                 <div className="text-center mb-6">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-3">
-                        <UserPlus className="w-6 h-6 text-emerald-400" />
+                    <div className="w-12 h-12 rounded-2xl bg-[#374151] border border-[#4B5563] flex items-center justify-center mx-auto mb-3 shadow-md">
+                        <UserPlus className="w-6 h-6 text-[#D1D5DB]" />
                     </div>
-                    <h2 className="text-2xl font-bold text-white tracking-tight">Create Free Chess Account</h2>
-                    <p className="text-sm text-gray-400 mt-1">
+                    <h2 className="text-2xl font-bold text-[#F9FAFB] tracking-tight">Create Free Chess Account</h2>
+                    <p className="text-sm text-[#9CA3AF] mt-1">
                         Start with a default 1200 Elo rating and compete in multiplayer rooms.
                     </p>
                 </div>
@@ -60,7 +60,7 @@ export default function Register() {
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                     <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
+                        <label className="block text-xs font-semibold text-[#D1D5DB] uppercase tracking-wider mb-1.5">
                             Username
                         </label>
                         <input
@@ -69,12 +69,12 @@ export default function Register() {
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             placeholder="Grandmaster99"
-                            className="w-full bg-[#26292f] border border-[#3a3f4b] focus:border-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                            className="w-full bg-[#1F2937] border border-[#4B5563] focus:border-[#D1D5DB] text-[#F9FAFB] px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
+                        <label className="block text-xs font-semibold text-[#D1D5DB] uppercase tracking-wider mb-1.5">
                             Email
                         </label>
                         <input
@@ -83,12 +83,12 @@ export default function Register() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="player@example.com"
-                            className="w-full bg-[#26292f] border border-[#3a3f4b] focus:border-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                            className="w-full bg-[#1F2937] border border-[#4B5563] focus:border-[#D1D5DB] text-[#F9FAFB] px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
+                        <label className="block text-xs font-semibold text-[#D1D5DB] uppercase tracking-wider mb-1.5">
                             Password
                         </label>
                         <input
@@ -97,22 +97,22 @@ export default function Register() {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="At least 6 characters"
-                            className="w-full bg-[#26292f] border border-[#3a3f4b] focus:border-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                            className="w-full bg-[#1F2937] border border-[#4B5563] focus:border-[#D1D5DB] text-[#F9FAFB] px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
                         />
                     </div>
 
                     <button
                         type="submit"
                         disabled={loading}
-                        className="mt-2 w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2"
+                        className="mt-2 w-full py-3 px-4 bg-[#374151] hover:bg-[#4B5563] disabled:opacity-50 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-black/40 border border-[#4B5563] flex items-center justify-center gap-2"
                     >
                         <span>{loading ? 'Creating Account...' : 'Sign Up & Play'}</span>
                     </button>
                 </form>
 
-                <p className="text-center text-xs text-gray-400 mt-6">
+                <p className="text-center text-xs text-[#9CA3AF] mt-6">
                     Already registered?{' '}
-                    <Link to="/login" className="text-emerald-400 hover:text-emerald-300 font-semibold underline">
+                    <Link to="/login" className="text-[#D1D5DB] hover:text-white font-semibold underline">
                         Sign In here
                     </Link>
                 </p>
@@ -120,4 +120,3 @@ export default function Register() {
         </div>
     );
 }
-

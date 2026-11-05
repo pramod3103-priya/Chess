@@ -10,6 +10,8 @@ export function GameProvider({ children }) {
     const [error, setError] = useState(null);
     const [pendingDraw, setPendingDraw] = useState(null);
     const [drawNotice, setDrawNotice] = useState(null);
+    const [rematchOffered, setRematchOffered] = useState(null);
+    const [rematchNotice, setRematchNotice] = useState(null);
     const [lastMoveCoords, setLastMoveCoords] = useState(null);
 
     const socket = getSocket();
@@ -190,6 +192,25 @@ export function GameProvider({ children }) {
             });
         }
 
+        function handleRematchOffered(data) {
+            console.log('[Socket] rematchOffered:', data);
+            setRematchOffered(data);
+        }
+
+        function handleRematchAccepted(data) {
+            console.log('[Socket] rematchAccepted:', data);
+            setRematchOffered(null);
+            setRematchNotice(null);
+            playSound('move');
+        }
+
+        function handleRematchDeclined(data) {
+            console.log('[Socket] rematchDeclined:', data);
+            setRematchOffered(null);
+            setRematchNotice(data?.message || 'Opponent declined the rematch offer.');
+            setTimeout(() => setRematchNotice(null), 5000);
+        }
+
         function handleError(err) {
             console.error('[Socket Error]', err);
             const msg = typeof err === 'string' ? err : (err?.message || 'An error occurred');
@@ -210,6 +231,9 @@ export function GameProvider({ children }) {
         socket.on('drawAccepted', handleDrawAccepted);
         socket.on('drawRejected', handleDrawDeclined);
         socket.on('drawDeclined', handleDrawDeclined);
+        socket.on('rematchOffered', handleRematchOffered);
+        socket.on('rematchAccepted', handleRematchAccepted);
+        socket.on('rematchDeclined', handleRematchDeclined);
         socket.on('errorMessage', handleError);
         socket.on('error', handleError);
 
@@ -228,6 +252,9 @@ export function GameProvider({ children }) {
             socket.off('drawAccepted', handleDrawAccepted);
             socket.off('drawRejected', handleDrawDeclined);
             socket.off('drawDeclined', handleDrawDeclined);
+            socket.off('rematchOffered', handleRematchOffered);
+            socket.off('rematchAccepted', handleRematchAccepted);
+            socket.off('rematchDeclined', handleRematchDeclined);
             socket.off('errorMessage', handleError);
             socket.off('error', handleError);
         };
@@ -236,19 +263,42 @@ export function GameProvider({ children }) {
     const createGame = useCallback((options = {}) => {
         setError(null);
         const playerToken = getPlayerToken();
+        const sock = getSocket();
+
         return new Promise((resolve, reject) => {
-            socket.emit('createGame', { ...options, playerToken }, (response) => {
-                if (response && (response.success === false || response.error)) {
+            let settled = false;
+            const timeoutId = setTimeout(() => {
+                if (!settled) {
+                    settled = true;
+                    reject(new Error('Socket timeout while creating room.'));
+                }
+            }, 4000);
+
+            if (!sock.connected) {
+                sock.connect();
+            }
+
+            sock.emit('createGame', { ...options, playerToken }, (response) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timeoutId);
+
+                if (!response) {
+                    return reject(new Error('No response from game server'));
+                }
+                if (response.success === false || response.error) {
                     const msg = response.message || response.error || 'Failed to create room';
                     setError(msg);
-                    reject(new Error(msg));
-                } else if (response && response.roomId) {
+                    return reject(new Error(msg));
+                }
+                if (response.roomId) {
                     if (response.gameState) {
                         setRoom(response.gameState);
                         if (response.gameState.clocks) setClocks(response.gameState.clocks);
                     }
-                    resolve(response.roomId);
+                    return resolve(response.roomId);
                 }
+                reject(new Error('Invalid response received from game server'));
             });
         });
     }, [socket]);
@@ -256,13 +306,35 @@ export function GameProvider({ children }) {
     const joinGame = useCallback((roomId) => {
         setError(null);
         const playerToken = getPlayerToken();
+        const sock = getSocket();
+
         return new Promise((resolve, reject) => {
-            socket.emit('joinGame', { roomId, playerToken }, (response) => {
-                if (response && (response.success === false || response.error)) {
+            let settled = false;
+            const timeoutId = setTimeout(() => {
+                if (!settled) {
+                    settled = true;
+                    reject(new Error('Connection timed out while joining room.'));
+                }
+            }, 6000);
+
+            if (!sock.connected) {
+                sock.connect();
+            }
+
+            sock.emit('joinGame', { roomId, playerToken }, (response) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timeoutId);
+
+                if (!response) {
+                    return reject(new Error('No response from game server'));
+                }
+                if (response.success === false || response.error) {
                     const msg = response.message || response.error || 'Failed to join room';
                     setError(msg);
-                    reject(new Error(msg));
-                } else if (response && response.success) {
+                    return reject(new Error(msg));
+                }
+                if (response.success) {
                     if (response.gameState) {
                         setRoom(response.gameState);
                         if (response.gameState.clocks) setClocks(response.gameState.clocks);
@@ -271,8 +343,9 @@ export function GameProvider({ children }) {
                             setLastMoveCoords({ from: last.from, to: last.to });
                         }
                     }
-                    resolve(response);
+                    return resolve(response);
                 }
+                reject(new Error('Failed to join game room'));
             });
         });
     }, [socket]);
@@ -362,6 +435,23 @@ export function GameProvider({ children }) {
         if (!curRoom) return;
         const playerToken = getPlayerToken();
         socket.emit('requestRematch', { roomId: curRoom.roomId, playerToken });
+        setRematchOffered({ byColor: curRoom.myColor, byName: 'You' });
+    }, [socket]);
+
+    const acceptRematch = useCallback(() => {
+        const curRoom = roomRef.current;
+        if (!curRoom) return;
+        const playerToken = getPlayerToken();
+        socket.emit('acceptRematch', { roomId: curRoom.roomId, playerToken });
+        setRematchOffered(null);
+    }, [socket]);
+
+    const declineRematch = useCallback(() => {
+        const curRoom = roomRef.current;
+        if (!curRoom) return;
+        const playerToken = getPlayerToken();
+        socket.emit('declineRematch', { roomId: curRoom.roomId, playerToken });
+        setRematchOffered(null);
     }, [socket]);
 
     const clearRoom = useCallback(() => {
@@ -370,6 +460,8 @@ export function GameProvider({ children }) {
         setLastMoveCoords(null);
         setPendingDraw(null);
         setDrawNotice(null);
+        setRematchOffered(null);
+        setRematchNotice(null);
     }, []);
 
     // Exposed convenience states
@@ -380,6 +472,7 @@ export function GameProvider({ children }) {
         return room.myColor === 'w' ? room.blackPlayer : room.whitePlayer;
     }, [room]);
     const fen = room?.fen || null;
+    const pgn = room?.pgn || '';
     const currentTurn = room?.turn || 'w';
     const moves = room?.moves || [];
     const gameStatus = room?.status || 'IDLE';
@@ -394,6 +487,7 @@ export function GameProvider({ children }) {
             opponent,
             board: fen,
             fen,
+            pgn,
             currentTurn,
             moves,
             gameStatus,
@@ -403,6 +497,8 @@ export function GameProvider({ children }) {
             error,
             pendingDraw,
             drawNotice,
+            rematchOffered,
+            rematchNotice,
             lastMoveCoords,
             createGame,
             joinGame,
@@ -414,6 +510,8 @@ export function GameProvider({ children }) {
             acceptDraw,
             rejectDraw,
             requestRematch,
+            acceptRematch,
+            declineRematch,
             clearRoom,
             setError
         }}>

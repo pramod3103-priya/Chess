@@ -21,20 +21,20 @@ export default function MoveHistory({ moves = [] }) {
     }, [moves]);
 
     return (
-        <div className="bg-[#1e2024] border border-[#2e323b] rounded-2xl flex flex-col h-full shadow-lg overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#2e323b] flex items-center justify-between bg-[#181a1d]">
-                <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">
-                    <History className="w-4 h-4 text-emerald-400" />
+        <div className="bg-[#273244] border border-[#4B5563] rounded-2xl flex flex-col h-full shadow-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#4B5563] flex items-center justify-between bg-[#1F2937]">
+                <div className="flex items-center gap-2 text-sm font-semibold text-[#F9FAFB]">
+                    <History className="w-4 h-4 text-[#D1D5DB]" />
                     <span>Move History</span>
                 </div>
-                <span className="text-xs font-mono text-gray-400">
+                <span className="text-xs font-mono text-[#9CA3AF]">
                     {moves.length} {moves.length === 1 ? 'ply' : 'plies'}
                 </span>
             </div>
 
             <div className="p-3 overflow-y-auto flex-1 font-mono text-sm max-h-[260px] md:max-h-[360px] space-y-1">
                 {turns.length === 0 ? (
-                    <div className="text-center text-gray-500 py-8 text-xs italic">
+                    <div className="text-center text-[#9CA3AF] py-8 text-xs italic">
                         Moves will appear here once the game begins...
                     </div>
                 ) : (
@@ -43,23 +43,23 @@ export default function MoveHistory({ moves = [] }) {
                         return (
                             <div
                                 key={t.num}
-                                className={`grid grid-cols-12 py-1 px-2 rounded hover:bg-[#26292f] transition-colors ${
-                                    isLatestTurn ? 'bg-[#26292f]/60' : ''
+                                className={`grid grid-cols-12 py-1 px-2 rounded hover:bg-[#374151] transition-colors ${
+                                    isLatestTurn ? 'bg-[#374151]/60' : ''
                                 }`}
                             >
-                                <span className="col-span-2 text-gray-500 text-xs font-medium">
+                                <span className="col-span-2 text-[#9CA3AF] text-xs font-medium">
                                     {t.num}.
                                 </span>
                                 <span
                                     className={`col-span-5 font-semibold ${
-                                        isLatestTurn && !t.black ? 'text-emerald-400' : 'text-gray-200'
+                                        isLatestTurn && !t.black ? 'text-[#F9FAFB] font-bold underline' : 'text-[#D1D5DB]'
                                     }`}
                                 >
                                     {t.white}
                                 </span>
                                 <span
                                     className={`col-span-5 font-semibold ${
-                                        isLatestTurn && t.black ? 'text-emerald-400' : 'text-gray-300'
+                                        isLatestTurn && t.black ? 'text-[#F9FAFB] font-bold underline' : 'text-[#9CA3AF]'
                                     }`}
                                 >
                                     {t.black}
@@ -73,4 +73,3 @@ export default function MoveHistory({ moves = [] }) {
         </div>
     );
 }
-

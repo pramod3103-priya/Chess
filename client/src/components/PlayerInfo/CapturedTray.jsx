@@ -26,11 +26,10 @@ export default function CapturedTray({ pieces = [], advantage = 0, color = 'w' }
                 })}
             </div>
             {advantage > 0 && (
-                <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                <span className="text-xs font-mono font-bold text-[#F9FAFB] bg-[#374151] border border-[#4B5563] px-1.5 py-0.5 rounded">
                     +{advantage}
                 </span>
             )}
         </div>
     );
 }
-

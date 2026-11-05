@@ -33,14 +33,14 @@ export default function Square({
         >
             {/* Rank label on the left edge */}
             {showRankLabel && (
-                <span className={`coord-rank ${isDark ? 'text-[#f0d9b5]' : 'text-[#b58863]'}`}>
+                <span className={`coord-rank ${isDark ? 'text-[#D1D5DB]' : 'text-[#374151]'}`}>
                     {rank}
                 </span>
             )}
 
             {/* File label on the bottom edge */}
             {showFileLabel && (
-                <span className={`coord-file ${isDark ? 'text-[#f0d9b5]' : 'text-[#b58863]'}`}>
+                <span className={`coord-file ${isDark ? 'text-[#D1D5DB]' : 'text-[#374151]'}`}>
                     {file}
                 </span>
             )}
@@ -52,4 +52,3 @@ export default function Square({
         </div>
     );
 }
-

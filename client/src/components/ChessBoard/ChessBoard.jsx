@@ -10,6 +10,7 @@ export default function ChessBoard({
     orientation = 'white',
     isInteractive = true,
     lastMove = null,
+    theme = 'slate',
     onMove
 }) {
     const [selectedSquare, setSelectedSquare] = useState(null);
@@ -149,7 +150,7 @@ export default function ChessBoard({
             )}
 
             {/* Board Container: Exactly 8x8 Grid with 64 squares */}
-            <div className="w-full h-full grid grid-cols-8 grid-rows-8 rounded-xl overflow-hidden shadow-[0_12px_36px_rgba(0,0,0,0.65)] border-4 border-[#22252a]">
+            <div className={`w-full h-full grid grid-cols-8 grid-rows-8 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.7)] border-4 border-[#374151] bg-[#1F2937] theme-${theme}`}>
                 {displayedRanks.map((rank, rankIdx) =>
                     displayedFiles.map((file, fileIdx) => {
                         const squareKey = `${file}${rank}`;

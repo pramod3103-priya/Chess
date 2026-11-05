@@ -1,6 +1,11 @@
 import { io } from 'socket.io-client';
 
-const SOCKET_SERVER_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+const getSocketUrl = () => {
+    if (typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost') {
+        return `http://${window.location.hostname}:5000`;
+    }
+    return import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+};
 
 let socket = null;
 
@@ -17,14 +22,15 @@ export function getSocket() {
     if (!socket) {
         const token = localStorage.getItem('token');
         const playerToken = getPlayerToken();
+        const serverUrl = getSocketUrl();
 
-        socket = io(SOCKET_SERVER_URL, {
+        socket = io(serverUrl, {
             auth: {
                 token: token || null,
                 playerToken: playerToken
             },
             reconnection: true,
-            reconnectionAttempts: 10,
+            reconnectionAttempts: 15,
             reconnectionDelay: 1000,
             transports: ['websocket', 'polling']
         });

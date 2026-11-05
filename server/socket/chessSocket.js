@@ -10,7 +10,7 @@ const activeRooms = new Map();
 
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
-function generateRoomId() {
+async function generateUniqueRoomId() {
     let id = '';
     let attempts = 0;
     do {
@@ -20,7 +20,7 @@ function generateRoomId() {
         }
         attempts++;
         if (attempts > 500) break;
-    } while (activeRooms.has(id));
+    } while (activeRooms.has(id) || (await Game.exists({ roomId: id })));
     return id;
 }
 
@@ -157,6 +157,7 @@ async function finalizeGame(io, room, { status, winner, loser, result }) {
         result: room.result,
         clocks: room.clocks,
         fen: room.chess.fen(),
+        pgn: room.chess.pgn(),
         endedAt: room.endedAt,
         ratingChange
     });
@@ -205,7 +206,8 @@ function getSanitizedGameState(room, socketId, playerToken) {
         myColor,
         winner: room.winner,
         result: room.result,
-        drawOfferedBy: room.drawOfferedBy
+        drawOfferedBy: room.drawOfferedBy,
+        rematchOfferedBy: room.rematchOfferedBy || null
     };
 }
 
@@ -237,7 +239,7 @@ module.exports = function initializeChessSocket(io) {
         // ====================================================================
         const handleCreateGame = async (data = {}, callback) => {
             try {
-                const roomId = generateRoomId();
+                const roomId = await generateUniqueRoomId();
                 const initialSeconds = Number(data.timeControl) || 600;
                 const increment = Number(data.increment) || 0;
                 const playerName = (data.playerName && data.playerName.trim()) ||
@@ -614,10 +616,14 @@ module.exports = function initializeChessSocket(io) {
                 }
 
                 // Security Check 4: Validate legal move with authoritative chess.js
+                const fromSquare = data.from || (data.move && data.move.from);
+                const toSquare = data.to || (data.move && data.move.to);
+                const promo = data.promotion || (data.move && data.move.promotion) || 'q';
+
                 const moveResult = validateAndMakeMove(room.chess, {
-                    from: data.from,
-                    to: data.to,
-                    promotion: data.promotion || 'q'
+                    from: fromSquare,
+                    to: toSquare,
+                    promotion: promo
                 });
 
                 if (!moveResult) {
@@ -932,56 +938,163 @@ module.exports = function initializeChessSocket(io) {
         });
 
         // ====================================================================
-        // 6. REMATCH
+        // 6. REMATCH (Two-Player Agreement Protocol)
         // ====================================================================
-        socket.on('requestRematch', async (data = {}) => {
+        const executeRematch = async (targetRoom, cb) => {
+            targetRoom.rematchOfferedBy = null;
+            targetRoom.drawOfferedBy = null;
+
+            // Swap colors and player identities
+            const prevWhiteToken = targetRoom.whitePlayerToken;
+            const prevBlackToken = targetRoom.blackPlayerToken;
+            const prevWhiteSocket = targetRoom.whiteSocketId;
+            const prevBlackSocket = targetRoom.blackSocketId;
+            const prevWhiteUserId = targetRoom.whiteUserId;
+            const prevBlackUserId = targetRoom.blackUserId;
+            const prevWhiteName = targetRoom.whiteName;
+            const prevBlackName = targetRoom.blackName;
+
+            targetRoom.whitePlayerToken = prevBlackToken;
+            targetRoom.whiteSocketId = prevBlackSocket;
+            targetRoom.whiteUserId = prevBlackUserId;
+            targetRoom.whiteName = prevBlackName;
+
+            targetRoom.blackPlayerToken = prevWhiteToken;
+            targetRoom.blackSocketId = prevWhiteSocket;
+            targetRoom.blackUserId = prevWhiteUserId;
+            targetRoom.blackName = prevWhiteName;
+
+            targetRoom.chess = createChessInstance();
+            targetRoom.fen = targetRoom.chess.fen();
+            targetRoom.moves = [];
+            targetRoom.status = 'ACTIVE';
+            targetRoom.winner = null;
+            targetRoom.loser = null;
+            targetRoom.result = '';
+            targetRoom.clocks = {
+                white: targetRoom.timeControl.initial,
+                black: targetRoom.timeControl.initial
+            };
+
+            // Update MongoDB session for the rematch
+            try {
+                await Game.findOneAndUpdate(
+                    { roomId: targetRoom.roomId },
+                    {
+                        whitePlayer: targetRoom.whiteUserId,
+                        blackPlayer: targetRoom.blackUserId,
+                        whitePlayerToken: targetRoom.whitePlayerToken,
+                        blackPlayerToken: targetRoom.blackPlayerToken,
+                        whiteName: targetRoom.whiteName,
+                        blackName: targetRoom.blackName,
+                        fen: targetRoom.chess.fen(),
+                        pgn: '',
+                        moves: [],
+                        clocks: targetRoom.clocks,
+                        status: 'ACTIVE',
+                        winner: null,
+                        loser: null,
+                        result: '',
+                        endedAt: null,
+                        updatedAt: new Date()
+                    }
+                );
+            } catch (dbErr) {
+                console.error('[Rematch DB Update Error]', dbErr);
+            }
+
+            startRoomClock(io, targetRoom);
+
+            io.to(targetRoom.roomId).emit('rematchAccepted', {
+                message: 'Rematch accepted! Colors have been swapped.'
+            });
+
+            if (targetRoom.whiteSocketId) {
+                const sWhite = getSanitizedGameState(targetRoom, targetRoom.whiteSocketId, targetRoom.whitePlayerToken);
+                io.to(targetRoom.whiteSocketId).emit('gameStarted', sWhite);
+                io.to(targetRoom.whiteSocketId).emit('gameState', sWhite);
+            }
+            if (targetRoom.blackSocketId) {
+                const sBlack = getSanitizedGameState(targetRoom, targetRoom.blackSocketId, targetRoom.blackPlayerToken);
+                io.to(targetRoom.blackSocketId).emit('gameStarted', sBlack);
+                io.to(targetRoom.blackSocketId).emit('gameState', sBlack);
+            }
+
+            if (typeof cb === 'function') cb({ success: true });
+        };
+
+        socket.on('requestRematch', async (data = {}, callback) => {
+            const targetRoomId = (data.roomId || currentRoomId || '').toUpperCase();
+            if (!targetRoomId || !activeRooms.has(targetRoomId)) {
+                if (typeof callback === 'function') callback({ success: false, message: 'Game not found' });
+                return;
+            }
+            const room = activeRooms.get(targetRoomId);
+
+            const isFinished = ['COMPLETED', 'CHECKMATE', 'RESIGNED', 'TIMEOUT', 'DRAW', 'STALEMATE'].includes(room.status);
+            if (!isFinished) {
+                if (typeof callback === 'function') callback({ success: false, message: 'Game is not finished' });
+                return;
+            }
+
+            const playerToken = data.playerToken || getSocketPlayerToken();
+            let color = null;
+            if (room.whiteSocketId === socket.id || (playerToken && room.whitePlayerToken === playerToken)) color = 'w';
+            else if (room.blackSocketId === socket.id || (playerToken && room.blackPlayerToken === playerToken)) color = 'b';
+
+            if (!color) {
+                if (typeof callback === 'function') callback({ success: false, message: 'Spectators cannot request rematch' });
+                return;
+            }
+
+            // If opponent already requested rematch, this automatically accepts it
+            if (room.rematchOfferedBy && room.rematchOfferedBy !== color) {
+                return executeRematch(room, callback);
+            }
+
+            room.rematchOfferedBy = color;
+            const byName = color === 'w' ? room.whiteName : room.blackName;
+
+            socket.to(room.roomId).emit('rematchOffered', {
+                byColor: color,
+                byName
+            });
+
+            if (typeof callback === 'function') callback({ success: true, pending: true });
+        });
+
+        socket.on('acceptRematch', async (data = {}, callback) => {
+            const targetRoomId = (data.roomId || currentRoomId || '').toUpperCase();
+            if (!targetRoomId || !activeRooms.has(targetRoomId)) {
+                if (typeof callback === 'function') callback({ success: false, message: 'Game not found' });
+                return;
+            }
+            const room = activeRooms.get(targetRoomId);
+
+            const playerToken = data.playerToken || getSocketPlayerToken();
+            let color = null;
+            if (room.whiteSocketId === socket.id || (playerToken && room.whitePlayerToken === playerToken)) color = 'w';
+            else if (room.blackSocketId === socket.id || (playerToken && room.blackPlayerToken === playerToken)) color = 'b';
+
+            if (!color || !room.rematchOfferedBy || room.rematchOfferedBy === color) {
+                if (typeof callback === 'function') callback({ success: false, message: 'No active rematch offer from opponent' });
+                return;
+            }
+
+            await executeRematch(room, callback);
+        });
+
+        socket.on('declineRematch', (data = {}, callback) => {
             const targetRoomId = (data.roomId || currentRoomId || '').toUpperCase();
             if (!targetRoomId || !activeRooms.has(targetRoomId)) return;
             const room = activeRooms.get(targetRoomId);
 
-            if (room.status !== 'COMPLETED' && room.status !== 'CHECKMATE' && room.status !== 'RESIGNED' && room.status !== 'TIMEOUT' && room.status !== 'DRAW' && room.status !== 'STALEMATE') {
-                return;
-            }
+            room.rematchOfferedBy = null;
+            io.to(room.roomId).emit('rematchDeclined', {
+                message: 'Opponent declined the rematch offer.'
+            });
 
-            // Swap colors for rematch
-            const prevWhiteToken = room.whitePlayerToken;
-            const prevBlackToken = room.blackPlayerToken;
-            const prevWhiteSocket = room.whiteSocketId;
-            const prevBlackSocket = room.blackSocketId;
-            const prevWhiteName = room.whiteName;
-            const prevBlackName = room.blackName;
-
-            room.chess = createChessInstance();
-            room.fen = room.chess.fen();
-            room.moves = [];
-            room.status = 'ACTIVE';
-            room.winner = null;
-            room.result = '';
-            room.clocks = {
-                white: room.timeControl.initial,
-                black: room.timeControl.initial
-            };
-
-            // Swap players
-            room.whitePlayerToken = prevBlackToken;
-            room.whiteSocketId = prevBlackSocket;
-            room.whiteName = prevBlackName;
-
-            room.blackPlayerToken = prevWhiteToken;
-            room.blackSocketId = prevWhiteSocket;
-            room.blackName = prevWhiteName;
-
-            startRoomClock(io, room);
-
-            // Notify both players
-            if (room.whiteSocketId) {
-                const sWhite = getSanitizedGameState(room, room.whiteSocketId, room.whitePlayerToken);
-                io.to(room.whiteSocketId).emit('gameState', sWhite);
-            }
-            if (room.blackSocketId) {
-                const sBlack = getSanitizedGameState(room, room.blackSocketId, room.blackPlayerToken);
-                io.to(room.blackSocketId).emit('gameState', sBlack);
-            }
+            if (typeof callback === 'function') callback({ success: true });
         });
 
         // Get single game state
