@@ -9,8 +9,8 @@ const getSocketUrl = () => {
 
     // Native builds must connect to the deployed Socket.IO server, not capacitor://localhost.
     if (Capacitor.isNativePlatform()) {
-        if (import.meta.env.VITE_SOCKET_URL) return import.meta.env.VITE_SOCKET_URL.replace(/\\/+$/, '');
-        if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL.replace(/\\/api\\/?$/, '').replace(/\\/+$/, '');
+        if (import.meta.env.VITE_SOCKET_URL) return import.meta.env.VITE_SOCKET_URL.replace(/\/+$/, '');
+        if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '').replace(/\/+$/, '');
         return null;
     }
 
@@ -56,7 +56,9 @@ export function getSocket() {
         const playerToken = getPlayerToken();
         const serverUrl = getSocketUrl();
 
-        socket = io(serverUrl, {
+        if (!serverUrl) console.warn('[Socket.IO] Native app backend is not configured. Set VITE_SOCKET_URL or VITE_API_URL before building.');
+        socket = io(serverUrl || undefined, {
+            autoConnect: !!serverUrl,
             auth: {
                 token: token || null,
                 playerToken: playerToken
