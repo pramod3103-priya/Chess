@@ -100,16 +100,16 @@ export default function Home() {
 
 
                 {Capacitor.isNativePlatform() ? (
-                    <div className="w-full max-w-3xl mb-8 p-5 rounded-2xl bg-[#1F2937] border border-sky-500/30 text-left">
+                    <Link to="/bluetooth-nearby" className="w-full max-w-3xl mb-8 p-5 rounded-2xl bg-[#1F2937] border border-sky-500/30 text-left hover:border-sky-400 transition">
                         <div className="flex items-center gap-3">
                             <div className="w-11 h-11 rounded-xl bg-sky-500/10 flex items-center justify-center"><Bluetooth className="w-6 h-6 text-sky-400" /></div>
                             <div className="flex-1">
                                 <h2 className="text-base font-extrabold text-white">Bluetooth Nearby</h2>
-                                <p className="text-xs text-[#9CA3AF] mt-1">Offline phone-to-phone chess. Bluetooth connection is being prepared.</p>
+                                <p className="text-xs text-[#9CA3AF] mt-1">Connect two nearby phones and test offline message transfer.</p>
                             </div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-sky-300 border border-sky-500/30 rounded-full px-2 py-1">Coming soon</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-sky-300 border border-sky-500/30 rounded-full px-2 py-1">Test</span>
                         </div>
-                    </div>
+                    </Link>
                 ) : (
                     <a href="https://github.com/pramod3103-priya/Chess/releases/download/android-latest/THE-PROXI-CHESS.apk" className="inline-flex items-center justify-center gap-2 mb-8 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-extrabold shadow-lg transition" aria-label="Download THE PROXI CHESS Android app">
                         <Download className="w-4 h-4" /> Download App
