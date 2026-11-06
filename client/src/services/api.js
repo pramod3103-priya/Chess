@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Capacitor } from '@capacitor/core';
 
 export const getBaseUrl = () => {
     // 1. Explicit production or custom environment variable
@@ -6,6 +7,9 @@ export const getBaseUrl = () => {
         const url = import.meta.env.VITE_API_URL.replace(/\/+$/, '');
         return url.endsWith('/api') ? url : `${url}/api`;
     }
+
+    // Native Android/iOS builds must use the deployed backend, never the device's localhost.
+    if (Capacitor.isNativePlatform()) return null;
 
     // 2. Local network / LAN debugging (localhost, 127.0.0.1, or local IP)
     if (typeof window !== 'undefined' && window.location.hostname && (
@@ -38,6 +42,10 @@ const api = axios.create({
 // Format network and API errors into actionable user-friendly messages
 export const formatApiError = (err) => {
     if (!err) return 'An unexpected error occurred.';
+
+    if (Capacitor.isNativePlatform() && !import.meta.env.VITE_API_URL) {
+        return 'THE PROXI CHESS app needs its live backend URL. Configure VITE_API_URL before building the mobile app.';
+    }
     
     if (err.response?.data?.message) {
         return err.response.data.message;
