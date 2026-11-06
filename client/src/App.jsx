@@ -86,7 +86,35 @@ function AppUpdateNotice() {
     );
 }
 
+function ProxiSplash({ visible }) {
+    if (!visible) return null;
+    return (
+        <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-hidden bg-[#070B14] text-center">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(30,64,175,0.30),transparent_48%)]" />
+            <div className="relative flex h-36 w-36 items-center justify-center rounded-[2rem] border border-amber-300/50 bg-gradient-to-br from-[#202B43] to-[#090D16] shadow-[0_0_55px_rgba(234,179,8,0.22)]">
+                <svg viewBox="0 0 120 120" className="h-24 w-24" role="img" aria-label="Golden chess king">
+                    <defs><linearGradient id="proxiGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#FFF1A8"/><stop offset=".48" stopColor="#D6A637"/><stop offset="1" stopColor="#8A5B12"/></linearGradient></defs>
+                    <path d="M60 9v16M52 17h16" stroke="url(#proxiGold)" strokeWidth="5" strokeLinecap="round"/>
+                    <path d="M39 35 27 26l-4 9 12 9-7 37h64l-7-37 12-9-4-9-12 9-21-8-21 8Z" fill="url(#proxiGold)" stroke="#FFE9A0" strokeWidth="2" strokeLinejoin="round"/>
+                    <path d="M34 84h52l7 10H27l7-10Z" fill="url(#proxiGold)"/>
+                    <path d="M25 99h70v8H25z" rx="3" fill="#D6A637"/>
+                    <path d="M43 49h34M40 61h40" stroke="#70470D" strokeWidth="3" strokeLinecap="round" opacity=".7"/>
+                </svg>
+            </div>
+            <h1 className="relative mt-7 text-3xl font-black tracking-[0.18em] text-amber-200">THE PROXI</h1>
+            <p className="relative mt-1 text-sm font-semibold tracking-[0.42em] text-white">CHESS</p>
+            <div className="relative mt-9 h-1 w-32 overflow-hidden rounded-full bg-slate-700"><div className="h-full w-1/2 animate-[proxiLoad_1.2s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-amber-500 to-yellow-100" /></div>
+            <style>{'@keyframes proxiLoad{0%{transform:translateX(-110%)}100%{transform:translateX(220%)}}'}</style>
+        </div>
+    );
+}
+
 export default function App() {
+    const [showSplash, setShowSplash] = useState(true);
+    useEffect(() => {
+        const timer = window.setTimeout(() => setShowSplash(false), 2400);
+        return () => window.clearTimeout(timer);
+    }, []);
     return (
         <Router>
             <AuthProvider>
@@ -111,6 +139,7 @@ export default function App() {
                             </Routes>
                         </main>
                         <AppUpdateNotice />
+                        <ProxiSplash visible={showSplash} />
                     </div>
                 </GameProvider>
             </AuthProvider>
