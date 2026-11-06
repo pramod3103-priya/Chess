@@ -9,7 +9,7 @@ on:
       - ".github/workflows/android-apk.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-android:
@@ -70,3 +70,16 @@ jobs:
           path: client/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Prepare public APK download
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk THE-PROXI-CHESS.apk
+
+      - name: Publish latest Android APK release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: THE PROXI CHESS - Latest Android APK
+          body: Latest installable Android debug build of THE PROXI CHESS. This is a direct APK download for testing.
+          files: client/THE-PROXI-CHESS.apk
+          make_latest: true
+          prerelease: false
