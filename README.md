@@ -73,3 +73,42 @@ Open **[http://localhost:5173](http://localhost:5173)** in your browser.
   - Server-authoritative `chess.js` move validation & clock timers
   - FIDE Elo Rating calculation service
 
+
+
+---
+
+## 📱 THE PROXI CHESS — Android & iOS App
+
+The React/Vite client is being prepared for native Android and iOS packaging with Capacitor.
+
+### First-time setup
+
+1. Install dependencies:
+   ```bash
+   cd client
+   npm install
+   ```
+2. Copy `.env.mobile.example` to `.env` and set the deployed backend URLs:
+   - `VITE_API_URL`: Render backend base URL (without trailing slash)
+   - `VITE_SOCKET_URL`: Socket.IO server URL
+3. Add native projects:
+   ```bash
+   npm run mobile:add:android
+   npm run mobile:add:ios
+   ```
+4. Build and sync the web app into native projects:
+   ```bash
+   npm run mobile:sync
+   ```
+5. Open the projects in Android Studio / Xcode:
+   ```bash
+   npm run mobile:open:android
+   npm run mobile:open:ios
+   ```
+
+Android builds require Android Studio and the Android SDK. iOS builds/signing require macOS with Xcode.
+
+### Multiplayer rollout
+
+- Online multiplayer reuses the existing Express + Socket.IO backend and room system.
+- Offline phone-to-phone Bluetooth play requires a native transport on both Android and iOS; it is a separate implementation phase and is not enabled by this Capacitor shell yet.
