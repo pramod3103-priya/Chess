@@ -24,7 +24,6 @@ export default function BluetoothNearby() {
     const joiningRef = useRef(false);
     const peerIdRef = useRef(null);
     const listenersRef = useRef([]);
-    const mountedRef = useRef(true);
 
     const addMessage = (from, text) => {
         if (!text) return;
@@ -122,7 +121,7 @@ export default function BluetoothNearby() {
             await BluetoothLowEnergy.startAdvertising({
                 name: 'THE PROXI CHESS',
                 services: [SERVICE_UUID],
-                includeName: true
+                includeName: false
             });
             setStatus('Hosting nearby game test. Keep this screen open while the other phone joins.');
         } catch (error) {
@@ -170,6 +169,9 @@ export default function BluetoothNearby() {
         setStatus('Preparing Bluetooth scan…');
         try {
             await prepareBluetooth('central');
+            try { await BluetoothLowEnergy.stopScan(); } catch { /* scan may not be active */ }
+            await Promise.all(listenersRef.current.map((handle) => handle.remove().catch(() => {})));
+            listenersRef.current = [];
             await addListener('characteristicChanged', (event) => {
                 if (event.service?.toLowerCase() !== SERVICE_UUID || event.characteristic?.toLowerCase() !== MESSAGE_UUID) return;
                 addMessage('Nearby phone', fromBytes(event.value));
@@ -229,9 +231,7 @@ export default function BluetoothNearby() {
     };
 
     useEffect(() => {
-        mountedRef.current = true;
         return () => {
-            mountedRef.current = false;
             void BluetoothLowEnergy.stopScan().catch(() => {});
             void BluetoothLowEnergy.stopAdvertising().catch(() => {});
             if (peerIdRef.current) void BluetoothLowEnergy.disconnect({ deviceId: peerIdRef.current }).catch(() => {});
@@ -307,6 +307,11 @@ export default function BluetoothNearby() {
                                     <Send className="w-5 h-5" />
                                 </button>
                             </div>
+                            {role === 'central' && !connected && (
+                                <button onClick={startJoining} disabled={busy} className="block text-xs font-bold text-sky-300 disabled:opacity-50">
+                                    Scan again
+                                </button>
+                            )}
                             <button onClick={stopBluetooth} className="inline-flex items-center gap-2 text-xs font-bold text-rose-300">
                                 <StopCircle className="w-4 h-4" /> Stop Bluetooth
                             </button>
