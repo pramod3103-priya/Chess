@@ -80,7 +80,10 @@ jobs:
         with:
           tag_name: android-latest
           name: THE PROXI CHESS - Latest Android APK
-          body: Latest installable Android debug build of THE PROXI CHESS. This is a direct APK download for testing.
+          body: |
+            Latest installable Android debug build of THE PROXI CHESS.
+            Build number: ${{ github.run_number }}
+            This is a direct APK download for testing.
           files: client/THE-PROXI-CHESS.apk
           overwrite_files: true
           make_latest: true
