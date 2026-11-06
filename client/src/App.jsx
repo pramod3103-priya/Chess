@@ -20,9 +20,9 @@ import BluetoothNearby from './pages/BluetoothNearby';
 
 function AppUpdateNotice() {
     const [update, setUpdate] = useState(null);
+    const [webUpdate, setWebUpdate] = useState(null);
 
     useEffect(() => {
-        if (!Capacitor.isNativePlatform()) return;
         let active = true;
         const currentBuild = Number(import.meta.env.VITE_BUILD_NUMBER || 0);
 
@@ -39,13 +39,32 @@ function AppUpdateNotice() {
                 const latestBuild = match ? Number(match[1]) : 0;
                 const apk = (release.assets || []).find(asset => asset.name === 'THE-PROXI-CHESS.apk');
                 if (active && apk && latestBuild > currentBuild) {
-                    setUpdate({ url: apk.browser_download_url, version: latestBuild });
+                    const notice = { url: apk.browser_download_url, version: latestBuild };
+                    if (Capacitor.isNativePlatform()) setUpdate(notice);
+                    else setWebUpdate(notice);
                 }
             })
             .catch(() => {});
         return () => { active = false; };
     }, []);
 
+    if (!update && !webUpdate) return null;
+    if (!Capacitor.isNativePlatform() && webUpdate) {
+        return (
+            <div className="sticky top-0 z-[90] flex items-center justify-between gap-3 border-b border-sky-400/30 bg-slate-900 px-4 py-3 text-sm text-white shadow-lg">
+                <div className="min-w-0">
+                    <p className="font-bold text-sky-300">♟ THE PROXI CHESS Android Update</p>
+                    <p className="text-xs text-gray-300">Naya app version {webUpdate.version} available hai.</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                    <a href={webUpdate.url} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white" target="_blank" rel="noreferrer">
+                        Download APK
+                    </a>
+                    <button onClick={() => setWebUpdate(null)} aria-label="Dismiss update notice" className="rounded-lg px-2 py-1 text-gray-300">✕</button>
+                </div>
+            </div>
+        );
+    }
     if (!update) return null;
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-5">
