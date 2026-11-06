@@ -19,8 +19,6 @@ export default function ChessBoard({
     const [movingPiece, setMovingPiece] = useState(null);
     const hasMountedBoard = useRef(false);
 
-
-
     // Normalize player color to 'w', 'b', or null
     const normalizedMyColor = useMemo(() => {
         if (!myColor) return null;
@@ -74,8 +72,8 @@ export default function ChessBoard({
 
     // Board ranks and files based on orientation
     const isBlackView = orientation === 'black' || orientation === 'b';
-    const displayedRanks = isBlackView ? [...RANKS].reverse() : RANKS;
-    const displayedFiles = isBlackView ? [...FILES].reverse() : FILES;
+    const displayedRanks = useMemo(() => (isBlackView ? [...RANKS].reverse() : RANKS), [isBlackView]);
+    const displayedFiles = useMemo(() => (isBlackView ? [...FILES].reverse() : FILES), [isBlackView]);
 
     // Animate the moved piece between squares instead of instantly swapping it.
     useLayoutEffect(() => {
