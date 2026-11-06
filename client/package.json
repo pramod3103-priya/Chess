@@ -26,7 +26,8 @@
     "@capacitor/ios": "8.6.0",
     "@capacitor/status-bar": "8.0.4",
     "@capacitor/splash-screen": "8.0.2",
-    "@capgo/capacitor-bluetooth-low-energy": "8.2.7"
+    "@capgo/capacitor-bluetooth-low-energy": "8.2.7",
+    "@capacitor/browser": "8.0.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.18",
