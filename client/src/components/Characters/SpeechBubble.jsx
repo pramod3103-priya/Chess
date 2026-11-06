@@ -41,9 +41,9 @@ export default function SpeechBubble({
                     )}
                 </div>
 
-                {/* Message body */}
+                {/* Fixed message area prevents the board shifting when quotes change */}
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
+                    <div className="flex items-center gap-2 mb-0.5 min-h-[1rem]">
                         <span className="text-xs font-black tracking-wider uppercase" style={{ color: accentColor }}>
                             {characterName}
                         </span>
@@ -53,7 +53,7 @@ export default function SpeechBubble({
                             </span>
                         )}
                     </div>
-                    <p className="text-sm font-medium text-[#F9FAFB] leading-snug italic">
+                    <p className="text-sm font-medium text-[#F9FAFB] leading-snug italic min-h-[3.75rem] line-clamp-3">
                         &ldquo;{message}&rdquo;
                     </p>
                 </div>
@@ -61,4 +61,3 @@ export default function SpeechBubble({
         </div>
     );
 }
-
