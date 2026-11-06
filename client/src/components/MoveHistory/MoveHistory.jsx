@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { History } from 'lucide-react';
 
 export default function MoveHistory({ moves = [] }) {
-    const bottomRef = useRef(null);
+    const historyListRef = useRef(null);
 
     // Group moves into turns: [{ moveNum: 1, white: 'e4', black: 'e5' }, ...]
     const turns = [];
@@ -14,9 +14,12 @@ export default function MoveHistory({ moves = [] }) {
         });
     }
 
+    // Keep auto-scrolling confined to the move-history panel.
+    // scrollIntoView() can also scroll the page and jump the mobile board out of view.
     useEffect(() => {
-        if (bottomRef.current) {
-            bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+        const historyList = historyListRef.current;
+        if (historyList) {
+            historyList.scrollTop = historyList.scrollHeight;
         }
     }, [moves]);
 
@@ -32,7 +35,7 @@ export default function MoveHistory({ moves = [] }) {
                 </span>
             </div>
 
-            <div className="p-3 overflow-y-auto flex-1 font-mono text-sm max-h-[260px] md:max-h-[360px] space-y-1">
+            <div ref={historyListRef} className="p-3 overflow-y-auto flex-1 font-mono text-sm max-h-[260px] md:max-h-[360px] space-y-1">
                 {turns.length === 0 ? (
                     <div className="text-center text-[#9CA3AF] py-8 text-xs italic">
                         Moves will appear here once the game begins...
@@ -68,7 +71,6 @@ export default function MoveHistory({ moves = [] }) {
                         );
                     })
                 )}
-                <div ref={bottomRef} />
             </div>
         </div>
     );
