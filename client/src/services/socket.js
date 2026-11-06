@@ -1,9 +1,17 @@
 import { io } from 'socket.io-client';
+import { Capacitor } from '@capacitor/core';
 
 const getSocketUrl = () => {
     // 1. Explicit socket URL environment variable
     if (import.meta.env.VITE_SOCKET_URL) {
         return import.meta.env.VITE_SOCKET_URL.replace(/\/+$/, '');
+    }
+
+    // Native builds must connect to the deployed Socket.IO server, not capacitor://localhost.
+    if (Capacitor.isNativePlatform()) {
+        if (import.meta.env.VITE_SOCKET_URL) return import.meta.env.VITE_SOCKET_URL.replace(/\\/+$/, '');
+        if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL.replace(/\\/api\\/?$/, '').replace(/\\/+$/, '');
+        return null;
     }
 
     // 2. Derive from API URL if provided (strip trailing /api)
