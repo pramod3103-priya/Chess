@@ -4,7 +4,6 @@ const config: CapacitorConfig = {
   appId: 'com.theproxi.chess',
   appName: 'THE PROXI CHESS',
   webDir: 'dist',
-  bundledWebRuntime: false,
   plugins: {
     StatusBar: {
       style: 'DARK',
