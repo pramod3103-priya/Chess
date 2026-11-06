@@ -270,36 +270,50 @@ export function GameProvider({ children }) {
             const timeoutId = setTimeout(() => {
                 if (!settled) {
                     settled = true;
-                    reject(new Error('Socket timeout while creating room.'));
+                    reject(new Error('Game server is taking longer than usual to respond. Please try again.'));
                 }
-            }, 4000);
+            }, 8000);
 
-            if (!sock.connected) {
-                sock.connect();
-            }
+            const performEmit = () => {
+                sock.emit('createGame', { ...options, playerToken }, (response) => {
+                    if (settled) return;
+                    settled = true;
+                    clearTimeout(timeoutId);
 
-            sock.emit('createGame', { ...options, playerToken }, (response) => {
-                if (settled) return;
-                settled = true;
-                clearTimeout(timeoutId);
-
-                if (!response) {
-                    return reject(new Error('No response from game server'));
-                }
-                if (response.success === false || response.error) {
-                    const msg = response.message || response.error || 'Failed to create room';
-                    setError(msg);
-                    return reject(new Error(msg));
-                }
-                if (response.roomId) {
-                    if (response.gameState) {
-                        setRoom(response.gameState);
-                        if (response.gameState.clocks) setClocks(response.gameState.clocks);
+                    if (!response) {
+                        return reject(new Error('No response from game server'));
                     }
-                    return resolve(response.roomId);
-                }
-                reject(new Error('Invalid response received from game server'));
-            });
+                    if (response.success === false || response.error) {
+                        const msg = response.message || response.error || 'Failed to create room';
+                        setError(msg);
+                        return reject(new Error(msg));
+                    }
+                    if (response.roomId) {
+                        if (response.gameState) {
+                            setRoom(response.gameState);
+                            if (response.gameState.clocks) setClocks(response.gameState.clocks);
+                        }
+                        return resolve(response.roomId);
+                    }
+                    reject(new Error('Invalid response received from game server'));
+                });
+            };
+
+            if (sock.connected) {
+                performEmit();
+            } else {
+                sock.connect();
+                sock.once('connect', () => {
+                    if (!settled) performEmit();
+                });
+                sock.once('connect_error', (connErr) => {
+                    if (!settled) {
+                        settled = true;
+                        clearTimeout(timeoutId);
+                        reject(new Error('Cannot establish real-time connection to game server.'));
+                    }
+                });
+            }
         });
     }, [socket]);
 
@@ -313,40 +327,54 @@ export function GameProvider({ children }) {
             const timeoutId = setTimeout(() => {
                 if (!settled) {
                     settled = true;
-                    reject(new Error('Connection timed out while joining room.'));
+                    reject(new Error('Connection timed out while joining room. Please try again.'));
                 }
-            }, 6000);
+            }, 8000);
 
-            if (!sock.connected) {
-                sock.connect();
-            }
+            const performJoin = () => {
+                sock.emit('joinGame', { roomId, playerToken }, (response) => {
+                    if (settled) return;
+                    settled = true;
+                    clearTimeout(timeoutId);
 
-            sock.emit('joinGame', { roomId, playerToken }, (response) => {
-                if (settled) return;
-                settled = true;
-                clearTimeout(timeoutId);
-
-                if (!response) {
-                    return reject(new Error('No response from game server'));
-                }
-                if (response.success === false || response.error) {
-                    const msg = response.message || response.error || 'Failed to join room';
-                    setError(msg);
-                    return reject(new Error(msg));
-                }
-                if (response.success) {
-                    if (response.gameState) {
-                        setRoom(response.gameState);
-                        if (response.gameState.clocks) setClocks(response.gameState.clocks);
-                        if (response.gameState.moves?.length > 0) {
-                            const last = response.gameState.moves[response.gameState.moves.length - 1];
-                            setLastMoveCoords({ from: last.from, to: last.to });
-                        }
+                    if (!response) {
+                        return reject(new Error('No response from game server'));
                     }
-                    return resolve(response);
-                }
-                reject(new Error('Failed to join game room'));
-            });
+                    if (response.success === false || response.error) {
+                        const msg = response.message || response.error || 'Failed to join room';
+                        setError(msg);
+                        return reject(new Error(msg));
+                    }
+                    if (response.success) {
+                        if (response.gameState) {
+                            setRoom(response.gameState);
+                            if (response.gameState.clocks) setClocks(response.gameState.clocks);
+                            if (response.gameState.moves?.length > 0) {
+                                const last = response.gameState.moves[response.gameState.moves.length - 1];
+                                setLastMoveCoords({ from: last.from, to: last.to });
+                            }
+                        }
+                        return resolve(response);
+                    }
+                    reject(new Error('Failed to join game room'));
+                });
+            };
+
+            if (sock.connected) {
+                performJoin();
+            } else {
+                sock.connect();
+                sock.once('connect', () => {
+                    if (!settled) performJoin();
+                });
+                sock.once('connect_error', () => {
+                    if (!settled) {
+                        settled = true;
+                        clearTimeout(timeoutId);
+                        reject(new Error('Cannot establish real-time connection to game server.'));
+                    }
+                });
+            }
         });
     }, [socket]);
 

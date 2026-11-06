@@ -1,111 +1,44 @@
 # Dependencies
-
 node_modules/
 client/node_modules/
 server/node_modules/
 
-# Environment variables
-
+# Environment variables (NEVER COMMIT SENSITIVE SECRETS)
 .env
 .env.local
 .env.development
 .env.production
 client/.env
 client/.env.local
+client/.env.production
 server/.env
 server/.env.local
+server/.env.production
 
-# Build
-
+# Build artifacts
 dist/
 build/
 client/dist/
 server/dist/
 
-# Logs
-
+# Scratch & test logs
+scratch/
 *.log
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
 
-# OS files
-
+# OS / Editor Files
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# IDE / Editors
-
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Temporary files
-
-*.tmp
-*.temp
-
-# Coverage
-
-coverage/
-
-# Cache
-
+# Temporary cache
 .cache/
-.parcel-cache/
 .vite/
-
-# Testing
-
-.nyc_output/
-
-# Local databases
-
-*.sqlite
-*.sqlite3
-
-# Misc
-
-.DS_Store
-
-````
-
-### Tera structure
-
-```text
-chess-game/
-│
-├── .gitignore        ← YE FILE ROOT ME
-│
-├── client/
-│   ├── src/
-│   ├── package.json
-│   └── ...
-│
-└── server/
-    ├── models/
-    ├── routes/
-    ├── server.js
-    ├── package.json
-    └── ...
-````
-
-⚠️ **Important:** `.env` GitHub par push **mat** karna. Isme `MONGO_URI`, `JWT_SECRET` etc. ho sakte hain.
-
-Phir:
-
-```bash
-git add .
-git status
-```
-
-`git status` mein `.env` **nahi dikhna chahiye**.
-
-Uske baad:
-
-```bash
-git commit -m "prepare project for deployment"
-git push
-```
+.temp/
+*.tmp

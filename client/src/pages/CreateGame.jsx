@@ -55,11 +55,13 @@ export default function CreateGame() {
     const [customIncrement, setCustomIncrement] = useState(0);
 
     const [loading, setLoading] = useState(false);
+    const [loadingStep, setLoadingStep] = useState('');
     const [error, setError] = useState('');
 
     const handleCreate = async () => {
         if (loading) return;
         setLoading(true);
+        setLoadingStep('Connecting to server...');
         setError('');
 
         let initialSeconds = 600;
@@ -81,6 +83,7 @@ export default function CreateGame() {
 
             // Direct socket creation takes authoritative precedence
             try {
+                setLoadingStep('Creating game room...');
                 resRoomId = await socketCreateGame({
                     timeControl: initialSeconds,
                     increment: incrementSeconds,
@@ -88,6 +91,7 @@ export default function CreateGame() {
                 });
             } catch (socketErr) {
                 console.warn('Socket create failed, attempting REST create fallback:', socketErr);
+                setLoadingStep('Synchronizing with game server...');
             }
 
             // Fallback to REST API if socket is connecting
@@ -103,13 +107,21 @@ export default function CreateGame() {
             }
 
             if (resRoomId) {
+                setLoadingStep('Opening room...');
                 navigate(`/game/${resRoomId}`);
             } else {
                 throw new Error('Server did not return a valid Room ID.');
             }
         } catch (err) {
-            setError(err.message || 'Failed to create room. Please try again.');
+            console.error('Room creation error:', err);
+            const msg = err.message || 'Failed to create room. Please try again.';
+            if (msg.toLowerCase().includes('network error') || msg.toLowerCase().includes('cannot connect')) {
+                setError('Cannot reach the game server. Please check your internet connection or verify the backend server is running.');
+            } else {
+                setError(msg);
+            }
             setLoading(false);
+            setLoadingStep('');
         }
     };
 
@@ -240,7 +252,7 @@ export default function CreateGame() {
                     {loading ? (
                         <>
                             <Loader2 className="w-5 h-5 animate-spin text-[#D1D5DB]" />
-                            <span>Creating Room...</span>
+                            <span>{loadingStep || 'Creating Room...'}</span>
                         </>
                     ) : (
                         <>

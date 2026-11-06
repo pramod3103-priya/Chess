@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Swords, Trophy, History, User, LogOut, LogIn, Plus } from 'lucide-react';
+import { Swords, Trophy, History, User, LogOut, LogIn, Plus, Bot } from 'lucide-react';
 
 export default function Navbar() {
     const { user, logout } = useAuth();
@@ -41,6 +41,13 @@ export default function Navbar() {
                         className="px-3 py-1.5 rounded-xl text-xs uppercase tracking-wider text-[#D1D5DB] hover:text-[#F9FAFB] hover:bg-[#273244] border border-transparent hover:border-[#4B5563] transition font-bold"
                     >
                         Join Code
+                    </Link>
+                    <Link
+                        to="/play-computer"
+                        className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-[#D1D5DB] hover:text-[#F9FAFB] hover:bg-[#273244] border border-transparent hover:border-[#4B5563] transition flex items-center gap-1.5"
+                    >
+                        <Bot className="w-3.5 h-3.5 text-[#38BDF8]" />
+                        <span>Vs Computer</span>
                     </Link>
                     <Link
                         to="/lobby"

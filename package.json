@@ -1,14 +1,15 @@
 {
-  "name": "chess-server",
+  "name": "chess-platform",
   "version": "1.0.0",
-  "description": "Production-ready MERN Stack Real-time Chess Server with Socket.IO, chess.js, and MongoDB",
-  "main": "server.js",
+  "description": "Production-ready MERN Stack Real-time Chess Platform with Socket.IO, chess.js, React and MongoDB",
+  "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js",
     "dev": "node server/server.js",
     "server": "node server/server.js",
     "client": "npm run dev --prefix client",
-    "build": "npm run build --prefix client"
+    "build": "npm run build --prefix client",
+    "vercel-build": "npm run build --prefix client"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

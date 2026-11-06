@@ -1,76 +1,130 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { PlusCircle, Key, LogIn, Swords, Shield, Zap, Trophy, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { PlusCircle, Key, LogIn, Swords, Shield, Zap, Trophy, User, Bot, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import CharacterAvatar from '../components/Characters/CharacterAvatar';
 
 export default function Home() {
-    const navigate = useNavigate();
     const { user, isAuthenticated } = useAuth();
 
     return (
         <div className="min-h-[calc(100vh-64px)] flex flex-col justify-between bg-[#111827]">
             {/* Hero Main */}
-            <main className="flex-1 flex flex-col items-center justify-center px-4 py-16 text-center max-w-4xl mx-auto">
-                {/* ♟ ONLINE CHESS */}
+            <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 text-center max-w-5xl mx-auto">
+                {/* Mode Tag */}
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#273244] border border-[#4B5563] text-[#D1D5DB] text-xs font-black tracking-widest uppercase mb-6 shadow-sm">
                     <span className="text-lg leading-none text-white">♟</span>
-                    <span>ONLINE CHESS ARENA</span>
+                    <span>ONLINE MULTIPLAYER & OFFLINE AI ARENA</span>
                 </div>
 
-                {/* Play Chess Online */}
+                {/* Hero Title */}
                 <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold text-[#F9FAFB] tracking-tight leading-tight mb-4">
-                    Play Chess Online
+                    Play Chess Anywhere
                 </h1>
 
-                <p className="text-[#9CA3AF] text-base sm:text-lg max-w-xl mb-10 leading-relaxed">
-                    Real-time multiplayer chess with instant room codes, authoritative FIDE rules, live clocks, and Elo rating tracking.
+                <p className="text-[#9CA3AF] text-base sm:text-lg max-w-2xl mb-10 leading-relaxed">
+                    Battle real players in online multiplayer rooms or challenge autonomous parody grandmasters <strong className="text-amber-400 font-bold">ODI</strong> and <strong className="text-sky-400 font-bold">RAHU</strong> running 100% offline in your browser.
                 </p>
 
-                {/* Main Action Buttons: [ Create Game ] [ Join Game ] [ Login ] */}
-                <div className="w-full max-w-md flex flex-col sm:flex-row items-center justify-center gap-3.5 mb-12">
+                {/* Two Core Game Modes Grid */}
+                <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-4 mb-10 text-left">
+                    {/* Mode 1: Play With Computer (Parody Bots) */}
                     <Link
-                        to="/create-game"
-                        className="w-full sm:flex-1 py-4 px-6 bg-[#374151] hover:bg-[#4B5563] text-[#F9FAFB] border border-[#4B5563] font-bold rounded-2xl flex items-center justify-center gap-2.5 shadow-xl shadow-black/40 transition transform hover:-translate-y-0.5 text-base"
+                        to="/play-computer"
+                        className="group relative p-6 rounded-3xl bg-gradient-to-br from-[#1E293B] via-[#1F2937] to-[#273244] border-2 border-amber-500/40 hover:border-amber-400 shadow-xl hover:shadow-[0_0_30px_rgba(245,158,11,0.2)] transition-all duration-300 transform hover:-translate-y-1 flex flex-col justify-between"
                     >
-                        <PlusCircle className="w-5 h-5 text-[#D1D5DB]" />
-                        <span>Create Game</span>
+                        <div className="absolute top-4 right-4 flex -space-x-3">
+                            <div className="w-10 h-10 rounded-full border-2 border-[#1E293B] bg-[#111827] overflow-hidden">
+                                <CharacterAvatar characterId="odi" state="idle" className="w-full h-full" />
+                            </div>
+                            <div className="w-10 h-10 rounded-full border-2 border-[#1E293B] bg-[#111827] overflow-hidden">
+                                <CharacterAvatar characterId="rahu" state="idle" className="w-full h-full" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 mb-3">
+                                <Sparkles className="w-3 h-3 text-amber-400" />
+                                <span>No Internet Required</span>
+                            </div>
+                            <h2 className="text-2xl font-black text-[#F9FAFB] mb-1.5 flex items-center gap-2">
+                                <Bot className="w-6 h-6 text-amber-400" />
+                                <span>Play With Computer</span>
+                            </h2>
+                            <p className="text-xs text-[#9CA3AF] leading-relaxed mb-4">
+                                Challenge parody characters <strong>ODI</strong> & <strong>RAHU</strong> with 3 difficulty levels, live animated reactions, and witty strategic quotes.
+                            </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-xs font-black text-amber-400 group-hover:translate-x-1 transition-transform">
+                            <span>Choose Opponent & Start &rarr;</span>
+                        </div>
                     </Link>
 
+                    {/* Mode 2: Play Online Multiplayer */}
+                    <div className="p-6 rounded-3xl bg-[#1F2937] border-2 border-[#374151] hover:border-[#4B5563] shadow-xl transition-all duration-300 flex flex-col justify-between">
+                        <div>
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#374151] text-[#D1D5DB] border border-[#4B5563] mb-3">
+                                <Swords className="w-3 h-3 text-[#D1D5DB]" />
+                                <span>Live Multiplayer</span>
+                            </div>
+                            <h2 className="text-2xl font-black text-[#F9FAFB] mb-1.5 flex items-center gap-2">
+                                <Swords className="w-6 h-6 text-emerald-400" />
+                                <span>Play Online</span>
+                            </h2>
+                            <p className="text-xs text-[#9CA3AF] leading-relaxed mb-4">
+                                Create an instant private game room with a 6-character code, invite a friend with a direct link, or join a public arena lobby.
+                            </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <Link
+                                to="/create-game"
+                                className="flex-1 py-2.5 px-3 bg-[#374151] hover:bg-[#4B5563] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow transition border border-[#4B5563]"
+                            >
+                                <PlusCircle className="w-4 h-4 text-[#D1D5DB]" />
+                                <span>Create Room</span>
+                            </Link>
+
+                            <Link
+                                to="/join-game"
+                                className="flex-1 py-2.5 px-3 bg-[#273244] hover:bg-[#374151] text-[#D1D5DB] hover:text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition border border-[#4B5563]"
+                            >
+                                <Key className="w-4 h-4 text-[#D1D5DB]" />
+                                <span>Join Code</span>
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Additional Lobby & Auth Quick-Links */}
+                <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-semibold text-[#9CA3AF]">
                     <Link
-                        to="/join-game"
-                        className="w-full sm:flex-1 py-4 px-6 bg-[#273244] hover:bg-[#374151] text-[#F9FAFB] border border-[#4B5563] font-bold rounded-2xl flex items-center justify-center gap-2.5 shadow-xl shadow-black/30 transition transform hover:-translate-y-0.5 text-base"
+                        to="/lobby"
+                        className="inline-flex items-center gap-1.5 hover:text-[#F9FAFB] transition px-3 py-1.5 rounded-lg hover:bg-[#1F2937]"
                     >
-                        <Key className="w-5 h-5 text-[#D1D5DB]" />
-                        <span>Join Game</span>
+                        <Swords className="w-3.5 h-3.5" />
+                        <span>Public Lobby Arena &rarr;</span>
                     </Link>
 
                     {!isAuthenticated ? (
                         <Link
                             to="/login"
-                            className="w-full sm:w-auto py-4 px-6 bg-[#1F2937] hover:bg-[#273244] text-[#D1D5DB] hover:text-white border border-[#4B5563] font-bold rounded-2xl flex items-center justify-center gap-2.5 transition transform hover:-translate-y-0.5 shadow-lg text-base"
+                            className="inline-flex items-center gap-1.5 hover:text-[#F9FAFB] transition px-3 py-1.5 rounded-lg hover:bg-[#1F2937]"
                         >
-                            <LogIn className="w-5 h-5 text-[#9CA3AF]" />
-                            <span>Login</span>
+                            <LogIn className="w-3.5 h-3.5" />
+                            <span>Sign In to Track Ratings &rarr;</span>
                         </Link>
                     ) : (
                         <Link
                             to="/profile"
-                            className="w-full sm:w-auto py-4 px-6 bg-[#1F2937] hover:bg-[#273244] text-[#F9FAFB] border border-[#4B5563] font-bold rounded-2xl flex items-center justify-center gap-2.5 transition transform hover:-translate-y-0.5 shadow-lg text-base"
+                            className="inline-flex items-center gap-1.5 hover:text-[#F9FAFB] transition px-3 py-1.5 rounded-lg hover:bg-[#1F2937]"
                         >
-                            <User className="w-5 h-5 text-[#D1D5DB]" />
-                            <span>Profile</span>
+                            <User className="w-3.5 h-3.5" />
+                            <span>Profile ({user.username}) &rarr;</span>
                         </Link>
                     )}
                 </div>
-
-                {/* Additional Lobby Quick-Link */}
-                <Link
-                    to="/lobby"
-                    className="inline-flex items-center gap-2 text-xs font-semibold text-[#9CA3AF] hover:text-[#F9FAFB] transition"
-                >
-                    <Swords className="w-4 h-4 text-[#9CA3AF]" />
-                    <span>Browse public arena lobby & rankings &rarr;</span>
-                </Link>
             </main>
 
             {/* Feature Highlights Grid */}
@@ -82,27 +136,27 @@ export default function Home() {
                         </div>
                         <h3 className="text-base font-bold text-[#F9FAFB] mb-1.5">Authoritative chess.js Rules</h3>
                         <p className="text-xs text-[#9CA3AF] leading-relaxed">
-                            Check, checkmate, stalemate, castling, en passant, and pawn promotion verified on the server.
+                            Check, checkmate, stalemate, castling, en passant, and pawn promotion verified with zero illegal moves.
                         </p>
                     </div>
 
                     <div className="p-6 rounded-2xl bg-[#273244] border border-[#4B5563] flex flex-col items-center sm:items-start text-center sm:text-left shadow-lg">
                         <div className="w-11 h-11 rounded-xl bg-[#374151] border border-[#4B5563] flex items-center justify-center mb-4">
-                            <Zap className="w-5 h-5 text-[#D1D5DB]" />
+                            <Bot className="w-5 h-5 text-[#38BDF8]" />
                         </div>
-                        <h3 className="text-base font-bold text-[#F9FAFB] mb-1.5">Real-Time WebSockets</h3>
+                        <h3 className="text-base font-bold text-[#F9FAFB] mb-1.5">Autonomous Browser AI</h3>
                         <p className="text-xs text-[#9CA3AF] leading-relaxed">
-                            Move broadcast, authoritative timers, draw offers, resignations, and instant board state sync.
+                            Minimax with alpha-beta pruning and piece-square tables runs 100% offline in-browser without server lag.
                         </p>
                     </div>
 
                     <div className="p-6 rounded-2xl bg-[#273244] border border-[#4B5563] flex flex-col items-center sm:items-start text-center sm:text-left shadow-lg">
                         <div className="w-11 h-11 rounded-xl bg-[#374151] border border-[#4B5563] flex items-center justify-center mb-4">
-                            <Trophy className="w-5 h-5 text-[#D1D5DB]" />
+                            <Trophy className="w-5 h-5 text-amber-400" />
                         </div>
-                        <h3 className="text-base font-bold text-[#F9FAFB] mb-1.5">Elo Ratings & History</h3>
+                        <h3 className="text-base font-bold text-[#F9FAFB] mb-1.5">Elo Ratings & Parody Bots</h3>
                         <p className="text-xs text-[#9CA3AF] leading-relaxed">
-                            Standard FIDE Elo calculation updates your rating on every win, draw, and loss in MongoDB.
+                            Play against ODI and RAHU with custom animated expressions, witty quotes, and multiple skill tiers.
                         </p>
                     </div>
                 </div>

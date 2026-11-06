@@ -23,15 +23,25 @@ export default function JoinGame() {
             // Call REST API POST /api/games/:roomId/join
             try {
                 await apiJoinGame(code);
+                navigate(`/game/${code}`);
             } catch (apiErr) {
-                if (apiErr.response?.data?.message) {
-                    console.warn('REST join warning:', apiErr.response.data.message);
+                const msg = apiErr.message || '';
+                // If it's a game state validation error (e.g. room full/cancelled), display it
+                if (msg.includes('closed') || msg.includes('full') || msg.includes('not found') || msg.includes('completed')) {
+                    setError(msg);
+                    setLoading(false);
+                    return;
                 }
+                // If it's a transient network issue or socket will handle it, proceed to room
+                navigate(`/game/${code}`);
             }
-            // Navigate to /game/:roomId
-            navigate(`/game/${code}`);
         } catch (err) {
-            setError(err.response?.data?.message || err.message || 'Failed to join room');
+            const msg = err.message || 'Failed to join room';
+            if (msg.toLowerCase().includes('network error')) {
+                setError('Cannot reach the game server. Please verify your connection.');
+            } else {
+                setError(msg);
+            }
         } finally {
             setLoading(false);
         }

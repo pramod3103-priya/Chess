@@ -1,10 +1,34 @@
 import { io } from 'socket.io-client';
 
 const getSocketUrl = () => {
-    if (typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost') {
+    // 1. Explicit socket URL environment variable
+    if (import.meta.env.VITE_SOCKET_URL) {
+        return import.meta.env.VITE_SOCKET_URL.replace(/\/+$/, '');
+    }
+
+    // 2. Derive from API URL if provided (strip trailing /api)
+    if (import.meta.env.VITE_API_URL) {
+        return import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+    }
+
+    // 3. Local network / LAN debugging
+    if (typeof window !== 'undefined' && window.location.hostname && (
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname.startsWith('192.168.') ||
+        window.location.hostname.startsWith('10.') ||
+        window.location.hostname.endsWith('.local')
+    )) {
         return `http://${window.location.hostname}:5000`;
     }
-    return import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+
+    // 4. Fallback to same-origin if proxied
+    if (typeof window !== 'undefined' && window.location.origin && !window.location.origin.includes('vercel.app')) {
+        return window.location.origin;
+    }
+
+    // 5. Default development server
+    return 'http://localhost:5000';
 };
 
 let socket = null;
@@ -36,7 +60,7 @@ export function getSocket() {
         });
 
         socket.on('connect', () => {
-            console.log('[Socket.IO] Connected to server:', SOCKET_SERVER_URL, 'Socket ID:', socket.id);
+            console.log('[Socket.IO] Connected to server:', serverUrl, 'Socket ID:', socket.id);
         });
 
         socket.on('connect_error', (err) => {

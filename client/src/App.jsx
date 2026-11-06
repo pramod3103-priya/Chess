@@ -12,6 +12,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
 import GameHistory from './pages/GameHistory';
+import CharacterSelect from './pages/CharacterSelect';
+import ComputerGame from './pages/ComputerGame';
 
 export default function App() {
     return (
@@ -28,6 +30,8 @@ export default function App() {
                                 <Route path="/lobby" element={<Lobby />} />
                                 <Route path="/create-game" element={<CreateGame />} />
                                 <Route path="/join-game" element={<JoinGame />} />
+                                <Route path="/play-computer" element={<CharacterSelect />} />
+                                <Route path="/play-computer/arena" element={<ComputerGame />} />
                                 <Route path="/game/:roomId" element={<ChessGame />} />
                                 <Route path="/profile" element={<Profile />} />
                                 <Route path="/history" element={<GameHistory />} />
