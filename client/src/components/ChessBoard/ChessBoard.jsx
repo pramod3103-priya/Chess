@@ -19,52 +19,7 @@ export default function ChessBoard({
     const [movingPiece, setMovingPiece] = useState(null);
     const hasMountedBoard = useRef(false);
 
-    // Animate the moved piece between squares instead of instantly swapping it.
-    useLayoutEffect(() => {
-        if (!lastMove?.from || !lastMove?.to) {
-            setMovingPiece(null);
-            hasMountedBoard.current = true;
-            return;
-        }
 
-        // Avoid animating a position that was already present on initial mount.
-        if (!hasMountedBoard.current) {
-            hasMountedBoard.current = true;
-            return;
-        }
-
-        const movedPiece = chess.get(lastMove.to);
-        const fromCol = displayedFiles.indexOf(lastMove.from[0]);
-        const fromRow = displayedRanks.indexOf(lastMove.from[1]);
-        const toCol = displayedFiles.indexOf(lastMove.to[0]);
-        const toRow = displayedRanks.indexOf(lastMove.to[1]);
-        if (!movedPiece || [fromCol, fromRow, toCol, toRow].some((v) => v < 0)) return;
-
-        const id = `${safeFen}-${lastMove.from}-${lastMove.to}`;
-        setMovingPiece({
-            id,
-            piece: movedPiece,
-            fromCol,
-            fromRow,
-            deltaCol: toCol - fromCol,
-            deltaRow: toRow - fromRow,
-            started: false
-        });
-
-        const frame = window.requestAnimationFrame(() => {
-            setMovingPiece((current) =>
-                current?.id === id ? { ...current, started: true } : current
-            );
-        });
-        const timer = window.setTimeout(() => {
-            setMovingPiece((current) => (current?.id === id ? null : current));
-        }, 260);
-
-        return () => {
-            window.cancelAnimationFrame(frame);
-            window.clearTimeout(timer);
-        };
-    }, [lastMove?.from, lastMove?.to, safeFen, chess, displayedFiles, displayedRanks]);
 
     // Normalize player color to 'w', 'b', or null
     const normalizedMyColor = useMemo(() => {
@@ -121,6 +76,53 @@ export default function ChessBoard({
     const isBlackView = orientation === 'black' || orientation === 'b';
     const displayedRanks = isBlackView ? [...RANKS].reverse() : RANKS;
     const displayedFiles = isBlackView ? [...FILES].reverse() : FILES;
+
+    // Animate the moved piece between squares instead of instantly swapping it.
+    useLayoutEffect(() => {
+        if (!lastMove?.from || !lastMove?.to) {
+            setMovingPiece(null);
+            hasMountedBoard.current = true;
+            return;
+        }
+
+        // Avoid animating a position that was already present on initial mount.
+        if (!hasMountedBoard.current) {
+            hasMountedBoard.current = true;
+            return;
+        }
+
+        const movedPiece = chess.get(lastMove.to);
+        const fromCol = displayedFiles.indexOf(lastMove.from[0]);
+        const fromRow = displayedRanks.indexOf(lastMove.from[1]);
+        const toCol = displayedFiles.indexOf(lastMove.to[0]);
+        const toRow = displayedRanks.indexOf(lastMove.to[1]);
+        if (!movedPiece || [fromCol, fromRow, toCol, toRow].some((v) => v < 0)) return;
+
+        const id = `${safeFen}-${lastMove.from}-${lastMove.to}`;
+        setMovingPiece({
+            id,
+            piece: movedPiece,
+            fromCol,
+            fromRow,
+            deltaCol: toCol - fromCol,
+            deltaRow: toRow - fromRow,
+            started: false
+        });
+
+        const frame = window.requestAnimationFrame(() => {
+            setMovingPiece((current) =>
+                current?.id === id ? { ...current, started: true } : current
+            );
+        });
+        const timer = window.setTimeout(() => {
+            setMovingPiece((current) => (current?.id === id ? null : current));
+        }, 260);
+
+        return () => {
+            window.cancelAnimationFrame(frame);
+            window.clearTimeout(timer);
+        };
+    }, [lastMove?.from, lastMove?.to, safeFen, chess, displayedFiles, displayedRanks]);
 
     const handleSquareClick = (squareKey) => {
         if (!isInteractive) return;
