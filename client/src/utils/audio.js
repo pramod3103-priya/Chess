@@ -23,6 +23,30 @@ export function isSoundEnabled() {
     return soundEnabled;
 }
 
+// Speak a short character catchphrase when the computer captures a player's piece.
+export function speakCharacterCapture(characterId) {
+    if (!soundEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    const lines = {
+        odi: ['Mitron! Yeh toh masterstroke hai!', 'Mitron, ek aur zabardast chaal!'],
+        rahu: ['Dosto, mohabbat ki dukaan mein yeh chaal bhi zaroori thi!', 'Khatam? Tata, bye-bye!']
+    };
+    const choices = lines[characterId] || lines.odi;
+    const line = choices[Math.floor(Math.random() * choices.length)];
+
+    try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(line);
+        utterance.lang = 'hi-IN';
+        utterance.rate = 0.96;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+        window.speechSynthesis.speak(utterance);
+    } catch (e) {
+        // Speech playback is optional; regular game sounds still work.
+    }
+}
+
 export function playSound(type) {
     if (!soundEnabled) return;
     try {
