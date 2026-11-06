@@ -172,3 +172,9 @@
   z-index: 2;
   font-family: inherit;
 }
+
+/* Keep mobile chess taps/drags on the board instead of scrolling the page. */
+.chess-board-grid {
+  touch-action: none;
+  overscroll-behavior: contain;
+}
