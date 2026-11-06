@@ -1,4 +1,5 @@
 import React from 'react';
+import { Capacitor } from '@capacitor/core';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { GameProvider } from './context/GameContext';
@@ -20,7 +21,7 @@ export default function App() {
         <Router>
             <AuthProvider>
                 <GameProvider>
-                    <div className="min-h-screen bg-[#111827] text-[#F9FAFB] flex flex-col font-sans selection:bg-[#374151] selection:text-[#F9FAFB]">
+                    <div className={`min-h-screen bg-[#111827] text-[#F9FAFB] flex flex-col font-sans selection:bg-[#374151] selection:text-[#F9FAFB] ${Capacitor.isNativePlatform() ? "native-app-shell" : ""}`}>
                         <Navbar />
                         <main className="flex-1">
                             <Routes>
