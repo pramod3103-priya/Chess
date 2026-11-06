@@ -178,3 +178,9 @@
   touch-action: none;
   overscroll-behavior: contain;
 }
+
+
+/* Keep native app content clear of the Android status bar / camera cutout. */
+.native-app-shell {
+  padding-top: max(env(safe-area-inset-top, 0px), 24px);
+}
