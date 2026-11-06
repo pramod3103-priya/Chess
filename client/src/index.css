@@ -18,7 +18,7 @@
   --board-border: #374151;
   --board-bg: #1F2937;
   --board-highlight: rgba(245, 158, 11, 0.45);
-  --board-last-move: rgba(209, 213, 219, 0.35);
+  --board-last-move: rgba(209, 213, 219, 0.20);
 }
 
 .theme-charcoal {
@@ -27,7 +27,7 @@
   --board-border: #374151;
   --board-bg: #111827;
   --board-highlight: rgba(245, 158, 11, 0.45);
-  --board-last-move: rgba(209, 213, 219, 0.35);
+  --board-last-move: rgba(209, 213, 219, 0.20);
 }
 
 .theme-silver {
@@ -36,7 +36,7 @@
   --board-border: #374151;
   --board-bg: #1F2937;
   --board-highlight: rgba(245, 158, 11, 0.45);
-  --board-last-move: rgba(209, 213, 219, 0.35);
+  --board-last-move: rgba(209, 213, 219, 0.20);
 }
 
 .theme-obsidian {
@@ -45,7 +45,7 @@
   --board-border: #1E293B;
   --board-bg: #0F172A;
   --board-highlight: rgba(245, 158, 11, 0.45);
-  --board-last-move: rgba(209, 213, 219, 0.35);
+  --board-last-move: rgba(209, 213, 219, 0.20);
 }
 
 /* Custom Scrollbars */
