@@ -6,6 +6,7 @@ export default function Square({
     rank,
     isDark,
     piece,
+    hidePiece = false,
     isSelected,
     isLastMove,
     isInCheck,
@@ -46,7 +47,7 @@ export default function Square({
             )}
 
             {/* Piece on square */}
-            {piece && (
+            {piece && !hidePiece && (
                 <ChessPiece type={piece.type} color={piece.color} />
             )}
         </div>
