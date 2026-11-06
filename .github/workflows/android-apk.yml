@@ -21,6 +21,7 @@ jobs:
     env:
       VITE_API_URL: https://pramod-chess-backend.onrender.com
       VITE_SOCKET_URL: https://pramod-chess-backend.onrender.com
+      VITE_BUILD_NUMBER: ${{ github.run_number }}
 
     steps:
       - name: Checkout source
