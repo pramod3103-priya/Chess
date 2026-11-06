@@ -23,7 +23,7 @@ import MoveHistory from '../components/MoveHistory/MoveHistory';
 import CapturedTray from '../components/PlayerInfo/CapturedTray';
 import { CHARACTERS, getRandomQuote } from '../components/Characters/characterData';
 import { findBestMove } from '../utils/chessAI';
-import { playSound, speakCharacterCapture, setSoundEnabled, isSoundEnabled } from '../utils/audio';
+import { playSound, setSoundEnabled, isSoundEnabled } from '../utils/audio';
 import { PIECE_VALUES, INITIAL_FEN } from '../utils/chessConstants';
 
 export default function ComputerGame() {
@@ -206,7 +206,6 @@ export default function ComputerGame() {
                     // Sound effect and character catchphrase when the computer captures a player's piece.
                     if (result.captured) {
                         playSound('capture');
-                        speakCharacterCapture(characterId);
                         if (chess.isCheck()) playSound('check');
                     } else if (chess.isCheck()) {
                         playSound('check');
