@@ -16,7 +16,7 @@ import Profile from './pages/Profile';
 import GameHistory from './pages/GameHistory';
 import CharacterSelect from './pages/CharacterSelect';
 import ComputerGame from './pages/ComputerGame';
-import BluetoothNearby from './pages/BluetoothNearby';
+import OfflineChess from './pages/OfflineChess';
 
 function AppUpdateNotice() {
     const [update, setUpdate] = useState(null);
@@ -131,7 +131,7 @@ export default function App() {
                                 <Route path="/join-game" element={<JoinGame />} />
                                 <Route path="/play-computer" element={<CharacterSelect />} />
                                 <Route path="/play-computer/arena" element={<ComputerGame />} />
-                                <Route path="/bluetooth-nearby" element={<BluetoothNearby />} />
+                                <Route path="/offline-chess" element={<OfflineChess />} />
                                 <Route path="/game/:roomId" element={<ChessGame />} />
                                 <Route path="/profile" element={<Profile />} />
                                 <Route path="/history" element={<GameHistory />} />
