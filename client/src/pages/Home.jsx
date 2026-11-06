@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { PlusCircle, Key, LogIn, Swords, Shield, Zap, Trophy, User, Bot, Sparkles, Download, Bluetooth } from 'lucide-react';
+import { PlusCircle, Key, LogIn, Swords, Shield, Zap, Trophy, User, Bot, Sparkles, Download, QrCode, Bluetooth } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../context/AuthContext';
 import CharacterAvatar from '../components/Characters/CharacterAvatar';
@@ -100,14 +100,14 @@ export default function Home() {
 
 
                 {Capacitor.isNativePlatform() ? (
-                    <Link to="/bluetooth-nearby" className="w-full max-w-3xl mb-8 p-5 rounded-2xl bg-[#1F2937] border border-sky-500/30 text-left hover:border-sky-400 transition">
+                    <Link to="/offline-chess" className="w-full max-w-3xl mb-8 p-5 rounded-2xl bg-[#1F2937] border border-emerald-500/30 text-left hover:border-emerald-400 transition">
                         <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-xl bg-sky-500/10 flex items-center justify-center"><Bluetooth className="w-6 h-6 text-sky-400" /></div>
+                            <div className="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center"><QrCode className="w-6 h-6 text-emerald-400" /></div>
                             <div className="flex-1">
-                                <h2 className="text-base font-extrabold text-white">Bluetooth Nearby</h2>
-                                <p className="text-xs text-[#9CA3AF] mt-1">Connect two nearby phones and test offline message transfer.</p>
+                                <h2 className="text-base font-extrabold text-white">Offline QR Chess</h2>
+                                <p className="text-xs text-[#9CA3AF] mt-1">Scan a QR code and play directly phone-to-phone using Bluetooth. No internet.</p>
                             </div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-sky-300 border border-sky-500/30 rounded-full px-2 py-1">Test</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 border border-emerald-500/30 rounded-full px-2 py-1">Offline</span>
                         </div>
                     </Link>
                 ) : (
