@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Copy, Check, Users, AlertCircle, ArrowLeft, WifiOff, XCircle, Palette } from 'lucide-react';
+import { Copy, Check, Users, AlertCircle, ArrowLeft, WifiOff, XCircle, Palette, QrCode } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useGame } from '../context/GameContext';
 import { useAuth } from '../context/AuthContext';
 import ChessBoard from '../components/ChessBoard/ChessBoard';
@@ -304,6 +305,34 @@ export default function ChessGame() {
                             {copiedLink ? <Check className="w-4 h-4 text-[#F9FAFB]" /> : <Copy className="w-4 h-4" />}
                             <span>{copiedLink ? 'Invite Link Copied!' : 'Copy Direct Invite Link'}</span>
                         </button>
+                    </div>
+
+                    <div className="mt-5 rounded-2xl border border-emerald-500/30 bg-[#1F2937] p-4">
+                        <div className="flex flex-col sm:flex-row items-center gap-4">
+                            <div className="rounded-xl bg-white p-3 shadow-lg">
+                                <QRCodeSVG
+                                    value={`${window.location.origin}/game/${encodeURIComponent(roomId)}`}
+                                    size={176}
+                                    level="H"
+                                    includeMargin
+                                />
+                            </div>
+                            <div className="min-w-0 flex-1 text-center sm:text-left">
+                                <div className="flex items-center justify-center sm:justify-start gap-2 text-emerald-300 font-black text-sm">
+                                    <QrCode className="w-4 h-4" />
+                                    <span>SCAN TO JOIN THIS ONLINE GAME</span>
+                                </div>
+                                <p className="mt-2 text-xs leading-relaxed text-[#D1D5DB]">
+                                    Ask your friend to open their phone camera and scan this QR code. The invite opens this exact room on THE PROXI CHESS.
+                                </p>
+                                <p className="mt-2 text-[11px] text-[#9CA3AF] break-all">
+                                    ${window.location.origin}/game/${roomId}
+                                </p>
+                                <p className="mt-2 text-[10px] text-emerald-300/80">
+                                    Both players need an internet connection for online multiplayer.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
