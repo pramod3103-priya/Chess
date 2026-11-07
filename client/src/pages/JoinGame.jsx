@@ -39,9 +39,11 @@ export default function JoinGame() {
             } else {
                 const url = new URL(rawValue);
                 if (url.origin !== window.location.origin) throw new Error('This QR code is not for THE PROXI CHESS website.');
-                const match = url.pathname.match(/^\\/game\\/([A-Z0-9]{4,8})\\/?$/i);
-                if (!match) throw new Error('QR code does not contain a valid chess room invite.');
-                code = match[1].toUpperCase();
+                const pathParts = url.pathname.split('/').filter(Boolean);
+                if (pathParts.length !== 2 || pathParts[0] !== 'game' || !/^[A-Z0-9]{4,8}$/i.test(pathParts[1])) {
+                    throw new Error('QR code does not contain a valid chess room invite.');
+                }
+                code = pathParts[1].toUpperCase();
             }
             stopScanner();
             setRoomId(code);
