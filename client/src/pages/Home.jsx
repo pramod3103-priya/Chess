@@ -28,7 +28,7 @@ export default function Home() {
                 </p>
 
                 {/* Two Core Game Modes Grid */}
-                <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-4 mb-10 text-left">
+                <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-4 mb-10 text-left">
                     {/* Mode 1: Play With Computer (Parody Bots) */}
                     <Link
                         to="/play-computer"
