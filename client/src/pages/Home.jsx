@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { PlusCircle, Key, LogIn, Swords, Shield, Zap, Trophy, User, Bot, Sparkles, Download, QrCode, Bluetooth } from 'lucide-react';
+import { PlusCircle, Key, LogIn, Swords, Shield, Zap, Trophy, User, Bot, Sparkles, Download, QrCode, ScanLine } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../context/AuthContext';
 import CharacterAvatar from '../components/Characters/CharacterAvatar';
@@ -28,7 +28,7 @@ export default function Home() {
                 </p>
 
                 {/* Two Core Game Modes Grid */}
-                <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-4 mb-10 text-left">
+                <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-4 mb-10 text-left">
                     {/* Mode 1: Play With Computer (Parody Bots) */}
                     <Link
                         to="/play-computer"
@@ -94,27 +94,37 @@ export default function Home() {
                                 <Key className="w-4 h-4 text-[#D1D5DB]" />
                                 <span>Join Code</span>
                             </Link>
+
+                            <Link
+                                to="/join-game"
+                                className="flex-1 py-2.5 px-3 bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition border border-emerald-500/40"
+                            >
+                                <ScanLine className="w-4 h-4" />
+                                <span>Scan QR</span>
+                            </Link>
                         </div>
                     </div>
                 </div>
 
 
-                {Capacitor.isNativePlatform() ? (
-                    <Link to="/offline-chess" className="w-full max-w-3xl mb-8 p-5 rounded-2xl bg-[#1F2937] border border-emerald-500/30 text-left hover:border-emerald-400 transition">
-                        <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center"><QrCode className="w-6 h-6 text-emerald-400" /></div>
-                            <div className="flex-1">
-                                <h2 className="text-base font-extrabold text-white">Offline QR Chess</h2>
-                                <p className="text-xs text-[#9CA3AF] mt-1">Scan a QR code and play directly phone-to-phone using Bluetooth. No internet.</p>
-                            </div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 border border-emerald-500/30 rounded-full px-2 py-1">Offline</span>
+                <div className="w-full max-w-4xl mb-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Link to="/join-game" className="p-4 rounded-2xl bg-[#1F2937] border border-emerald-500/30 text-left hover:border-emerald-400 transition flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center"><QrCode className="w-6 h-6 text-emerald-400" /></div>
+                        <div className="flex-1">
+                            <h2 className="text-sm font-extrabold text-white">Scan Online Room QR</h2>
+                            <p className="text-xs text-[#9CA3AF] mt-1">Scan your friend's invite QR and join the online match.</p>
                         </div>
                     </Link>
-                ) : (
-                    <a href="https://github.com/pramod3103-priya/Chess/releases/download/android-latest/THE-PROXI-CHESS.apk" className="inline-flex items-center justify-center gap-2 mb-8 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-extrabold shadow-lg transition" aria-label="Download THE PROXI CHESS Android app">
-                        <Download className="w-4 h-4" /> Download App
-                    </a>
-                )}
+                    {!Capacitor.isNativePlatform() && (
+                        <a href="https://github.com/pramod3103-priya/Chess/releases/download/android-latest/THE-PROXI-CHESS.apk" className="p-4 rounded-2xl bg-[#1F2937] border border-[#374151] text-left hover:border-[#64748B] transition flex items-center gap-3" aria-label="Download THE PROXI CHESS Android app">
+                            <div className="w-11 h-11 rounded-xl bg-sky-500/10 flex items-center justify-center"><Download className="w-6 h-6 text-sky-300" /></div>
+                            <div className="flex-1">
+                                <h2 className="text-sm font-extrabold text-white">Download Android App</h2>
+                                <p className="text-xs text-[#9CA3AF] mt-1">Install THE PROXI CHESS on your phone.</p>
+                            </div>
+                        </a>
+                    )}
+                </div>
 
                 {/* Additional Lobby & Auth Quick-Links */}
                 <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-semibold text-[#9CA3AF]">
