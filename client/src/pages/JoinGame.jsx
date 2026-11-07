@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Key, ArrowRight, ArrowLeft, AlertCircle, Loader2 } from 'lucide-react';
+import { Key, ArrowRight, ArrowLeft, AlertCircle, Loader2, Camera, X, QrCode } from 'lucide-react';
+import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
+import { Capacitor } from '@capacitor/core';
 import { joinGame as apiJoinGame } from '../services/api';
 
 export default function JoinGame() {
@@ -8,6 +10,97 @@ export default function JoinGame() {
     const [roomId, setRoomId] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [scanning, setScanning] = useState(false);
+    const [scanMessage, setScanMessage] = useState('');
+    const videoRef = useRef(null);
+    const streamRef = useRef(null);
+    const frameRef = useRef(null);
+
+    const stopScanner = () => {
+        setScanning(false);
+        if (frameRef.current) cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+    };
+
+    useEffect(() => () => {
+        if (frameRef.current) cancelAnimationFrame(frameRef.current);
+        if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
+    }, []);
+
+    const openScannedInvite = (rawValue) => {
+        try {
+            let code = '';
+            if (/^[A-Z0-9]{4,8}$/i.test(rawValue.trim())) {
+                code = rawValue.trim().toUpperCase();
+            } else {
+                const url = new URL(rawValue);
+                if (url.origin !== window.location.origin) throw new Error('This QR code is not for THE PROXI CHESS website.');
+                const match = url.pathname.match(/^\\/game\\/([A-Z0-9]{4,8})\\/?$/i);
+                if (!match) throw new Error('QR code does not contain a valid chess room invite.');
+                code = match[1].toUpperCase();
+            }
+            stopScanner();
+            setRoomId(code);
+            navigate('/game/' + encodeURIComponent(code));
+        } catch (err) {
+            setScanMessage(err.message || 'Invalid QR code. Please scan a THE PROXI CHESS room QR.');
+        }
+    };
+
+    const startScanner = async () => {
+        setError('');
+        setScanMessage('');
+        if (Capacitor.isNativePlatform()) {
+            try {
+                const permission = await BarcodeScanner.requestPermissions();
+                if (permission.camera !== 'granted') throw new Error('Allow camera permission to scan the invite QR.');
+                const result = await BarcodeScanner.scan({ formats: [BarcodeFormat.QrCode] });
+                const value = result.barcodes?.[0]?.rawValue;
+                if (!value) throw new Error('No QR code detected. Try again.');
+                openScannedInvite(value);
+            } catch (err) {
+                setScanMessage(err.message || 'QR scanner could not start.');
+            }
+            return;
+        }
+        if (!('BarcodeDetector' in window)) {
+            setScanMessage('This browser does not support camera QR scanning. Use Chrome or enter the room code manually below.');
+            return;
+        }
+        try {
+            const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+            streamRef.current = stream;
+            setScanning(true);
+            window.setTimeout(() => {
+                if (videoRef.current && streamRef.current) {
+                    videoRef.current.srcObject = streamRef.current;
+                    videoRef.current.play().catch(() => {});
+                    const scanFrame = async () => {
+                        if (!streamRef.current || !videoRef.current) return;
+                        try {
+                            const codes = await detector.detect(videoRef.current);
+                            if (codes.length && codes[0].rawValue) {
+                                openScannedInvite(codes[0].rawValue);
+                                return;
+                            }
+                        } catch {}
+                        frameRef.current = requestAnimationFrame(scanFrame);
+                    };
+                    frameRef.current = requestAnimationFrame(scanFrame);
+                }
+            }, 0);
+        } catch (err) {
+            stopScanner();
+            setScanMessage(err.name === 'NotAllowedError'
+                ? 'Camera permission denied. Allow camera access in your browser settings.'
+                : (err.message || 'Could not open camera. Use the room code option below.'));
+        }
+    };
 
     const handleJoin = async (e) => {
         e.preventDefault();
@@ -74,6 +167,35 @@ export default function JoinGame() {
                         <span>{error}</span>
                     </div>
                 )}
+
+                <div className="mb-4">
+                    <button
+                        type="button"
+                        onClick={startScanner}
+                        className="w-full rounded-xl border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 px-4 py-3 text-sm font-extrabold text-emerald-300 flex items-center justify-center gap-2 transition"
+                    >
+                        <QrCode className="w-5 h-5" />
+                        <Camera className="w-4 h-4" />
+                        Scan Room QR Code
+                    </button>
+                    {scanning && (
+                        <div className="mt-3 rounded-xl border border-[#4B5563] bg-[#1F2937] p-3">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-bold text-white">Point camera at the room QR</span>
+                                <button type="button" onClick={stopScanner} className="rounded-lg p-1.5 text-gray-300 hover:bg-[#374151]" aria-label="Close scanner"><X className="w-4 h-4" /></button>
+                            </div>
+                            <video ref={videoRef} muted playsInline className="w-full max-h-72 rounded-lg bg-black object-cover" />
+                            <p className="mt-2 text-[11px] text-gray-400">Use your rear camera and keep the QR code inside the frame.</p>
+                        </div>
+                    )}
+                    {scanMessage && <p className="mt-2 rounded-lg bg-amber-500/10 border border-amber-500/20 p-2.5 text-xs text-amber-200">{scanMessage}</p>}
+                </div>
+
+                <div className="mb-3 flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-[#6B7280]">
+                    <span className="h-px flex-1 bg-[#4B5563]" />
+                    <span>OR ENTER ROOM CODE</span>
+                    <span className="h-px flex-1 bg-[#4B5563]" />
+                </div>
 
                 <form onSubmit={handleJoin} className="flex flex-col gap-4">
                     <div>
